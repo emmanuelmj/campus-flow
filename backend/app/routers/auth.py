@@ -22,14 +22,18 @@ def register(user: schemas.UserCreate, db: Session = Depends(database.get_db)):
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
-    return {"message": "User registered successfully"}
+    return {"message": "User registered successfully", "user_id": new_user.id}
 
-@router.post("/login", response_model=schemas.Token)
-def login(user_credentials: schemas.UserCreate, db: Session = Depends(database.get_db)):
-    # simplified using UserCreate for mock
-    user = db.query(models.User).filter(models.User.email == user_credentials.email).first()
-    if not user or not verify_password(user_credentials.password, user.password_hash):
+@router.post("/login")
+def login(creds: schemas.LoginRequest, db: Session = Depends(database.get_db)):
+    user = db.query(models.User).filter(models.User.email == creds.email).first()
+    if not user or not verify_password(creds.password, user.password_hash):
         raise HTTPException(status_code=403, detail="Invalid Credentials")
     
     access_token = create_access_token(data={"user_id": user.id, "role": user.role})
-    return {"access_token": access_token, "token_type": "bearer", "role": user.role}
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "role": user.role,
+        "user_id": user.id
+    }

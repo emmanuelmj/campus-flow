@@ -21,15 +21,33 @@ class Vendor(Base):
     vendor_code = Column(String, unique=True, index=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
+    user = relationship("User")
+
 class Transaction(Base):
     __tablename__ = "transactions"
     id = Column(Integer, primary_key=True, index=True)
     sender_id = Column(Integer, ForeignKey("users.id"), nullable=True) # null for system topups
     receiver_id = Column(Integer, ForeignKey("users.id"), nullable=True) # null for system burns
     amount = Column(Float)
-    type = Column(String) # P2P, VENDOR_PAYMENT, SUBSCRIPTION, FINE, FEE
+    type = Column(String) # P2P, VENDOR_PAYMENT, SUBSCRIPTION, FINE, FEE, TOP_UP
     status = Column(String, default="COMPLETED")
     timestamp = Column(DateTime, default=datetime.utcnow)
+
+    sender = relationship("User", foreign_keys=[sender_id])
+    receiver = relationship("User", foreign_keys=[receiver_id])
+
+class PaymentRequest(Base):
+    __tablename__ = "payment_requests"
+    id = Column(Integer, primary_key=True, index=True)
+    vendor_id = Column(Integer, ForeignKey("users.id"))
+    student_id = Column(Integer, ForeignKey("users.id"))
+    amount = Column(Float)
+    description = Column(String, default="")
+    status = Column(String, default="PENDING") # PENDING, PAID, DECLINED
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    vendor = relationship("User", foreign_keys=[vendor_id])
+    student = relationship("User", foreign_keys=[student_id])
 
 class Subscription(Base):
     __tablename__ = "subscriptions"
@@ -39,6 +57,9 @@ class Subscription(Base):
     amount = Column(Float)
     billing_cycle = Column(String) # MONTHLY, WEEKLY
     next_billing_date = Column(DateTime)
+    is_active = Column(Boolean, default=True)
+
+    user = relationship("User")
 
 class Fine(Base):
     __tablename__ = "fines"
@@ -46,5 +67,9 @@ class Fine(Base):
     user_id = Column(Integer, ForeignKey("users.id"))
     reason = Column(String)
     amount = Column(Float)
+    status = Column(String, default="UNPAID") # UNPAID, PAID
     created_by_admin = Column(Integer, ForeignKey("users.id"))
     timestamp = Column(DateTime, default=datetime.utcnow)
+
+    student = relationship("User", foreign_keys=[user_id])
+    admin = relationship("User", foreign_keys=[created_by_admin])

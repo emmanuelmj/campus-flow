@@ -1,20 +1,71 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from app import database, schemas
+from sqlalchemy import or_
+from app import database, models, schemas
+from app.utils.security import require_vendor
 
 router = APIRouter(prefix="/vendor", tags=["vendor"])
 
+
 @router.post("/request-payment")
-def request_payment(req: schemas.VendorPaymentInit, db: Session = Depends(database.get_db)):
-    return {"status": "SUCCESS", "message": "Payment requested"}
+def request_payment(
+    req: schemas.VendorPaymentInit,
+    current_user: dict = Depends(require_vendor),
+    db: Session = Depends(database.get_db),
+):
+    if req.amount <= 0:
+        raise HTTPException(status_code=400, detail="Amount must be positive")
+
+    # Find student by email or name
+    student = (
+        db.query(models.User)
+        .filter(
+            models.User.role == "STUDENT",
+            or_(
+                models.User.email == req.student_identifier,
+                models.User.name == req.student_identifier,
+            ),
+        )
+        .first()
+    )
+    if not student:
+        raise HTTPException(status_code=404, detail="Student not found")
+
+    pay_req = models.PaymentRequest(
+        vendor_id=current_user["user_id"],
+        student_id=student.id,
+        amount=req.amount,
+        description=req.description,
+        status="PENDING",
+    )
+    db.add(pay_req)
+    db.commit()
+    db.refresh(pay_req)
+    return {
+        "status": "SUCCESS",
+        "request_id": f"req-{pay_req.id}",
+        "message": "Payment request sent to student",
+    }
+
 
 @router.get("/transactions")
-def vendor_transactions(db: Session = Depends(database.get_db)):
+def vendor_transactions(
+    current_user: dict = Depends(require_vendor),
+    db: Session = Depends(database.get_db),
+):
+    txns = (
+        db.query(models.Transaction)
+        .filter(models.Transaction.receiver_id == current_user["user_id"])
+        .order_by(models.Transaction.timestamp.desc())
+        .all()
+    )
     return [
         {
-            "transaction_id": "txn-989",
-            "sender_id": "CS-2024-001",
-            "amount": 120.00,
-            "timestamp": "2026-03-05T12:00:00Z"
+            "transaction_id": f"txn-{t.id}",
+            "sender_id": t.sender_id,
+            "amount": t.amount,
+            "timestamp": t.timestamp.isoformat() if t.timestamp else None,
+            "status": t.status,
         }
+        for t in txns
     ]
