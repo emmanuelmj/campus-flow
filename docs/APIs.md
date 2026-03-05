@@ -24,7 +24,7 @@ Creates a new user account on the platform. Roles determine access levels.
   ```json
   {
     "message": "User registered successfully",
-    "user_id": 1
+    "user_id": "123e4567-e89b-12d3-a456-426614174000"
   }
   ```
 
@@ -43,7 +43,7 @@ Authenticates a user and returns a JWT token for subsequent requests.
     "access_token": "eyJhbGciOiJIUzI1...",
     "token_type": "bearer",
     "role": "STUDENT",
-    "user_id": 1
+    "user_id": "123e4567-e89b-12d3-a456-426614174000"
   }
   ```
 
@@ -74,7 +74,7 @@ Retrieves the student's current wallet balance and status.
 * **Response:** (`200 OK`)
   ```json
   {
-    "wallet_id": "w-12345",
+    "wallet_id": "w-123e4567-e89b-12d3-a456-426614174000",
     "balance": 1500.50,
     "currency": "INR",
     "status": "ACTIVE"
@@ -88,10 +88,11 @@ Retrieves the student's entire transaction history (payments, transfers, fines, 
   ```json
   [
     {
-      "transaction_id": "txn-987",
+      "transaction_id": "txn-987e4567-e89b-12d3-a456-426614174000",
       "type": "VENDOR_PAYMENT",
       "amount": -150.00,
-      "recipient": "canteen-01",
+      "sender_id": "123e4567-e89b-12d3-a456-426614174000",
+      "receiver_id": "456e4567-e89b-12d3-a456-426614174001",
       "timestamp": "2026-03-05T10:30:00Z",
       "status": "COMPLETED"
     }
@@ -112,13 +113,13 @@ Initiates a peer-to-peer (P2P) transfer from the student to another student.
   ```json
   {
     "status": "SUCCESS",
-    "transaction_id": "txn-988",
+    "transaction_id": "txn-988e4567-e89b-12d3-a456-426614174000",
     "new_balance": 1250.50
   }
   ```
 
 ### `POST /pay-vendor`
-Makes a direct payment to a campus vendor using their unique Vendor ID.
+Makes a direct payment to a campus vendor using their unique Vendor ID code.
 * **Request Body:**
   ```json
   {
@@ -130,7 +131,7 @@ Makes a direct payment to a campus vendor using their unique Vendor ID.
   ```json
   {
     "status": "SUCCESS",
-    "transaction_id": "txn-989",
+    "transaction_id": "txn-989e4567-e89b-12d3-a456-426614174000",
     "new_balance": 1130.50
   }
   ```
@@ -149,18 +150,18 @@ Subscribes the student to a recurring campus service or plan.
   {
     "status": "SUCCESS",
     "message": "Subscribed to gym-monthly",
-    "subscription_id": "sub-001"
+    "subscription_id": "sub-001e4567-e89b-12d3-a456-426614174000"
   }
   ```
 
 ### `GET /student/payment-requests`
-Views pending payment requests initiated by vendors.
+Views pending payment requests initiated by vendors for the student.
 * **Request Body:** None
 * **Response:** (`200 OK`)
   ```json
   [
     {
-      "request_id": "req-104",
+      "request_id": "req-104e4567-e89b-12d3-a456-426614174000",
       "vendor_id": "stationery-01",
       "amount": 45.00,
       "description": "Notebooks and pens",
@@ -170,14 +171,14 @@ Views pending payment requests initiated by vendors.
   ```
 
 ### `POST /student/approve-payment/{request_id}`
-Approves a pending vendor's payment request, deducting funds from the wallet.
+Approves a pending vendor's payment request, deducting funds from the wallet. `request_id` must be a valid UUID.
 * **Request Body:** None
 * **Response:** (`200 OK`)
   ```json
   {
     "status": "SUCCESS",
     "message": "Payment request approved",
-    "transaction_id": "txn-990",
+    "transaction_id": "txn-990e4567-e89b-12d3-a456-426614174000",
     "new_balance": 1085.50
   }
   ```
@@ -189,7 +190,7 @@ Views a list of all unpaid and paid administrative fines issued to the student.
   ```json
   [
     {
-      "fine_id": "fine-12",
+      "fine_id": "fine-123e4567-e89b-12d3-a456-426614174000",
       "amount": 50.00,
       "reason": "Library late return",
       "status": "UNPAID",
@@ -199,7 +200,7 @@ Views a list of all unpaid and paid administrative fines issued to the student.
   ```
 
 ### `POST /student/pay-fine/{fine_id}`
-Pays a specific fine from the student's wallet balance.
+Pays a specific fine from the student's wallet balance. `fine_id` must be a valid UUID.
 * **Request Body:** None
 * **Response:** (`200 OK`)
   ```json
@@ -229,7 +230,7 @@ Initiates a payment charge (request) to a specific student's app.
   ```json
   {
     "status": "SUCCESS",
-    "request_id": "req-104",
+    "request_id": "req-104e4567-e89b-12d3-a456-426614174000",
     "message": "Payment request sent to student"
   }
   ```
@@ -241,8 +242,8 @@ Retrieves the vendor's transaction ledger / received payments history.
   ```json
   [
     {
-      "transaction_id": "txn-989",
-      "sender_id": "CS-2024-001",
+      "transaction_id": "txn-989e4567-e89b-12d3-a456-426614174000",
+      "sender_id": "123e4567-e89b-12d3-a456-426614174000",
       "amount": 120.00,
       "timestamp": "2026-03-05T12:00:00Z",
       "status": "COMPLETED"
@@ -270,7 +271,7 @@ Registers a new campus vendor profile onto the system.
   {
     "status": "SUCCESS",
     "message": "Vendor created successfully",
-    "vendor_user_id": 42
+    "vendor_user_id": "456e4567-e89b-12d3-a456-426614174001"
   }
   ```
 
@@ -283,6 +284,7 @@ Lists all active vendors on the campus.
     {
       "vendor_id": "canteen-01",
       "business_name": "Main Canteen",
+      "user_id": "456e4567-e89b-12d3-a456-426614174001",
       "created_at": "2026-02-14T08:00:00Z"
     }
   ]
@@ -303,7 +305,7 @@ Issues a monetary fine to a specific student.
   ```json
   {
     "status": "SUCCESS",
-    "fine_id": "fine-12",
+    "fine_id": "fine-123e4567-e89b-12d3-a456-426614174000",
     "message": "Fine issued"
   }
   ```
@@ -315,10 +317,11 @@ Lists all registered users (students, vendors, admins) inside the system.
   ```json
   [
     {
-      "id": 1,
+      "id": "123e4567-e89b-12d3-a456-426614174000",
       "name": "John Doe",
       "email": "john@university.edu",
       "role": "STUDENT",
+      "wallet_balance": 1500.50,
       "student_id": "CS-2024-001",
       "created_at": "2026-01-10T14:22:00Z"
     }
@@ -332,9 +335,9 @@ Retrieves a complete global ledger of all campus transactions for oversight.
   ```json
   [
     {
-      "transaction_id": "txn-989",
-      "sender_id": 1,
-      "receiver_id": 42,
+      "transaction_id": "txn-989e4567-e89b-12d3-a456-426614174000",
+      "sender_id": "123e4567-e89b-12d3-a456-426614174000",
+      "receiver_id": "456e4567-e89b-12d3-a456-426614174001",
       "type": "VENDOR_PAYMENT",
       "amount": 120.00,
       "timestamp": "2026-03-05T12:00:00Z",
