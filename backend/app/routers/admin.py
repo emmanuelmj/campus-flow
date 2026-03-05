@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import or_
 from app import database, models, schemas
 from app.utils.security import require_admin, get_password_hash
+from uuid import UUID
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 

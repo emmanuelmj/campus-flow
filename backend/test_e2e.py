@@ -9,10 +9,10 @@ import requests
 BASE = "http://127.0.0.1:8000"
 
 # ANSI colors
-G = "\033[92m"  # green
-R = "\033[91m"  # red
-B = "\033[1m"   # bold
-N = "\033[0m"   # reset
+G = "[PASS]"
+R = "[FAIL]"
+B = "[BOLD]"
+N = ""
 
 # Unique suffix to avoid duplicate-email conflicts on re-runs
 TAG = uuid.uuid4().hex[:6]
@@ -34,11 +34,12 @@ def step(label: str, method: str, path: str, *, json=None, token=None, expect=(2
     resp = getattr(requests, method)(url, json=json, headers=headers)
 
     if resp.status_code in expect:
-        print(f"  {G}✓ {label}{N}  [{resp.status_code}]")
+        print(f"  {G} {label}  [{resp.status_code}]")
     else:
-        print(f"  {R}✗ {label}{N}  [{resp.status_code}]")
+        print(f"  {R} {label}  [{resp.status_code}]")
         try:
-            print(f"    Response: {resp.json()}")
+            import json as json_lib
+            print(f"    Response: {json_lib.dumps(resp.json(), indent=2)}")
         except Exception:
             print(f"    Response: {resp.text}")
         sys.exit(1)
@@ -77,11 +78,9 @@ admin_login = step("POST /auth/login (ADMIN)", "post", "/auth/login", json={
 admin_token = admin_login["access_token"]
 
 step("POST /admin/create-vendor", "post", "/admin/create-vendor", token=admin_token, json={
-    "name": "TestVendor",
-    "email": VENDOR_EMAIL,
-    "password": PASSWORD,
-    "vendor_name": "Test Canteen",
-    "vendor_code": VENDOR_CODE,
+    "business_name": "Test Canteen",
+    "vendor_id": VENDOR_CODE,
+    "contact_email": VENDOR_EMAIL,
 }, expect=(201,))
 
 # 4. Login STUDENT
@@ -142,7 +141,7 @@ step("POST /admin/manual-deduct (100)", "post", "/admin/manual-deduct", token=ad
 print(f"\n{B}Step 10: Vendor requests admin deduct{N}")
 vendor_login = step("POST /auth/login (VENDOR)", "post", "/auth/login", json={
     "email": VENDOR_EMAIL,
-    "password": PASSWORD,
+    "password": "vendor123",
 })
 vendor_token = vendor_login["access_token"]
 deduct_req = step("POST /vendor/request-admin-deduct", "post", "/vendor/request-admin-deduct", token=vendor_token, json={
@@ -168,4 +167,38 @@ else:
     sys.exit(1)
 
 # ═══════════════════════════════════════════════════════════════════════════════
-print(f"\n{B}{G}═══ ALL 12 STEPS PASSED ═══{N}\n")
+# 13. Admin creates subscription
+print(f"\n{B}Step 13: Admin creates subscription{N}")
+sub = step("POST /admin/subscriptions", "post", "/admin/subscriptions", token=admin_token, json={
+    "student_identifier": STUDENT_EMAIL,
+    "plan_name": "Premium Meal Plan",
+    "amount": 200.0,
+    "billing_cycle": "MONTHLY",
+    "vendor_code": VENDOR_CODE,
+    "immediate_charge": True
+}, expect=(201,))
+sub_id = sub["subscription_id"].replace("sub-", "")
+
+# 14. Admin lists subscriptions
+print(f"\n{B}Step 14: Admin lists subscriptions{N}")
+subs = step("GET /admin/subscriptions", "get", "/admin/subscriptions", token=admin_token)
+if len(subs) == 0:
+    print(f"    {R}✗ Subscription listing failed (empty list){N}")
+    sys.exit(1)
+
+# 15. Admin cancels subscription
+print(f"\n{B}Step 15: Admin cancels subscription{N}")
+step(f"POST /admin/subscriptions/{sub_id}/cancel", "post", f"/admin/subscriptions/{sub_id}/cancel", token=admin_token, json={})
+
+# 16. Verify final balance (600 - 200 = 400)
+print(f"\n{B}Step 16: Verify target balance after subscription{N}")
+profile2 = step("GET /admin/student/{identifier}", "get", f"/admin/student/{STUDENT_EMAIL}", token=admin_token)
+balance2 = profile2["user"]["wallet_balance"]
+if balance2 == 400.0:
+    print(f"    {G}✓ Balance verified: ₹400.0 (expected ₹400.00){N}")
+else:
+    print(f"    {R}✗ Balance mismatch: got ₹{balance2}, expected ₹400.00{N}")
+    sys.exit(1)
+
+# ═══════════════════════════════════════════════════════════════════════════════
+print(f"\n{B}{G}═══ ALL 16 STEPS PASSED ═══{N}\n")
