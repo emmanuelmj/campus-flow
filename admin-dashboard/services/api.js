@@ -136,6 +136,18 @@ export async function manualDeduct(data) {
   }));
 }
 
+export async function manualTopUp(data) {
+  if (MOCK_MODE) {
+    const user = MOCK_USERS.find(u => u.email === data.user_identifier || u.student_id === data.user_identifier || u.name === data.user_identifier);
+    if (!user) throw new Error('User not found');
+    user.wallet_balance += data.amount;
+    return { status: 'SUCCESS', message: 'Added to ' + user.name, new_balance: user.wallet_balance };
+  }
+  return handle(await fetch(`${API_URL}/admin/manual-topup`, {
+    method: 'POST', headers: authHeaders(), body: JSON.stringify(data),
+  }));
+}
+
 export async function getStudentProfile(identifier) {
   if (MOCK_MODE) {
     const user = MOCK_USERS.find(u => u.role === 'STUDENT' && (u.student_id === identifier || u.email === identifier || u.name === identifier || u.id === identifier));

@@ -262,6 +262,47 @@ def manual_deduct(
         "transaction_id": "txn-" + str(txn.id),
     }
 
+@router.post("/manual-topup")
+def manual_topup(
+    req: schemas.ManualTopUpRequest,
+    current_user: dict = Depends(require_admin),
+    db: Session = Depends(database.get_db),
+):
+    if req.amount <= 0:
+        raise HTTPException(status_code=400, detail="Amount must be positive")
+
+    user = (
+        db.query(models.User)
+        .filter(
+            or_(
+                models.User.email == req.user_identifier,
+                models.User.student_id == req.user_identifier,
+                models.User.name == req.user_identifier,
+            )
+        )
+        .first()
+    )
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    user.wallet_balance += req.amount
+    txn = models.Transaction(
+        sender_id=None,
+        receiver_id=user.id,
+        amount=req.amount,
+        type="TOP_UP",
+        status="COMPLETED",
+    )
+    db.add(txn)
+    db.commit()
+    db.refresh(user)
+    return {
+        "status": "SUCCESS",
+        "message": f"Added INR {req.amount:.2f} to {user.name}",
+        "new_balance": user.wallet_balance,
+        "transaction_id": "txn-" + str(txn.id),
+    }
+
 
 @router.get("/student/{identifier}")
 def get_student_profile(

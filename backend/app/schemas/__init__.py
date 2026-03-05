@@ -75,6 +75,11 @@ class ManualDeductRequest(BaseModel):
     amount: float
     reason: str
 
+class ManualTopUpRequest(BaseModel):
+    user_identifier: str   # email, student_id, or name
+    amount: float
+    reason: str
+
 class AdminDeductRequestCreate(BaseModel):
     student_identifier: str
     amount: float
