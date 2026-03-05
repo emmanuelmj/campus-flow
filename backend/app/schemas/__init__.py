@@ -58,3 +58,24 @@ class FineCreate(BaseModel):
     amount: float
     reason: str
     force_deduct: bool = False
+
+# ─── New Admin ──────────────────────────────────────────────────────────────────
+
+class AdminUserCreate(BaseModel):
+    username: str
+    email: str
+    password: str
+    role: str                           # STUDENT, VENDOR, ADMIN
+    student_id: Optional[str] = None    # required when role=STUDENT
+    vendor_code: Optional[str] = None   # required when role=VENDOR
+    business_name: Optional[str] = None # required when role=VENDOR
+
+class ManualDeductRequest(BaseModel):
+    user_identifier: str   # email, student_id, or name
+    amount: float
+    reason: str
+
+class AdminDeductRequestCreate(BaseModel):
+    student_identifier: str
+    amount: float
+    reason: str

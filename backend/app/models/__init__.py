@@ -119,3 +119,20 @@ class Subscription(Base):
     is_active = Column(Boolean, default=True)
 
     user = relationship("User", foreign_keys=[user_id])
+
+
+class AdminDeductRequest(Base):
+    __tablename__ = "admin_deduct_requests"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    vendor_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
+    student_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
+    amount = Column(Float, nullable=False)
+    reason = Column(String, nullable=False)
+    status = Column(String, default="PENDING")  # PENDING, APPROVED, REJECTED
+    created_at = Column(DateTime, default=datetime.utcnow)
+    resolved_at = Column(DateTime, nullable=True)
+    resolved_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+
+    vendor = relationship("User", foreign_keys=[vendor_id])
+    student = relationship("User", foreign_keys=[student_id])
+    resolver = relationship("User", foreign_keys=[resolved_by])

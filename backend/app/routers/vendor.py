@@ -70,3 +70,70 @@ def vendor_transactions(
         }
         for t in txns
     ]
+
+
+@router.post("/request-admin-deduct")
+def request_admin_deduct(
+    req: schemas.AdminDeductRequestCreate,
+    current_user: dict = Depends(require_vendor),
+    db: Session = Depends(database.get_db),
+):
+    if req.amount <= 0:
+        raise HTTPException(status_code=400, detail="Amount must be positive")
+
+    student = (
+        db.query(models.User)
+        .filter(
+            models.User.role == "STUDENT",
+            or_(
+                models.User.email == req.student_identifier,
+                models.User.student_id == req.student_identifier,
+                models.User.name == req.student_identifier,
+            ),
+        )
+        .first()
+    )
+    if not student:
+        raise HTTPException(status_code=404, detail="Student not found")
+
+    deduct_req = models.AdminDeductRequest(
+        vendor_id=current_user["user_id"],
+        student_id=student.id,
+        amount=req.amount,
+        reason=req.reason,
+        status="PENDING",
+    )
+    db.add(deduct_req)
+    db.commit()
+    db.refresh(deduct_req)
+    return {
+        "status": "SUCCESS",
+        "request_id": str(deduct_req.id),
+        "message": "Deduct request sent to admin for approval",
+    }
+
+
+@router.get("/deduct-requests")
+def vendor_deduct_requests(
+    current_user: dict = Depends(require_vendor),
+    db: Session = Depends(database.get_db),
+):
+    reqs = (
+        db.query(models.AdminDeductRequest)
+        .filter(models.AdminDeductRequest.vendor_id == current_user["user_id"])
+        .order_by(models.AdminDeductRequest.created_at.desc())
+        .all()
+    )
+    return [
+        {
+            "id": str(r.id),
+            "student_name": r.student.name if r.student else None,
+            "student_identifier": r.student.student_id if r.student else None,
+            "amount": r.amount,
+            "reason": r.reason,
+            "status": r.status,
+            "created_at": r.created_at.isoformat() if r.created_at else None,
+            "resolved_at": r.resolved_at.isoformat() if r.resolved_at else None,
+        }
+        for r in reqs
+    ]
