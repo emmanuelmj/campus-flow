@@ -79,3 +79,11 @@ class AdminDeductRequestCreate(BaseModel):
     student_identifier: str
     amount: float
     reason: str
+
+class AdminSubscriptionCreate(BaseModel):
+    student_identifier: str       # email, student_id, or name
+    plan_name:          str
+    amount:             float
+    billing_cycle:      str            # WEEKLY, MONTHLY, SEMESTER
+    vendor_code:        Optional[str] = None
+    immediate_charge:   bool = True    # deduct first billing immediately

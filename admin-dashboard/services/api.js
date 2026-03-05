@@ -163,3 +163,38 @@ export async function rejectDeductRequest(id) {
   }
   return handle(await fetch(`${API_URL}/admin/deduct-requests/${id}/reject`, { method: 'POST', headers: authHeaders() }));
 }
+
+// ─── Mock subscriptions ───────────────────────────────────────────────────────
+const MOCK_SUBSCRIPTIONS = [
+  { subscription_id: 'sub-001', student_name: 'Alice Johnson', student_identifier: 'CS-2024-001', plan_name: 'Meal Plan - Standard', amount: 500, billing_cycle: 'MONTHLY', next_billing_date: new Date(Date.now() + 1000*60*60*24*15).toISOString(), vendor_name: 'Main Canteen', is_active: true },
+  { subscription_id: 'sub-002', student_name: 'Bob Smith',    student_identifier: 'CS-2024-002', plan_name: 'Gym Membership',       amount: 200, billing_cycle: 'MONTHLY', next_billing_date: new Date(Date.now() + 1000*60*60*24*5).toISOString(),  vendor_name: null,          is_active: true },
+  { subscription_id: 'sub-003', student_name: 'Carol White',  student_identifier: 'ME-2024-010', plan_name: 'Semester Bus Pass',    amount: 800, billing_cycle: 'SEMESTER', next_billing_date: new Date(Date.now() + 1000*60*60*24*90).toISOString(), vendor_name: null,          is_active: false },
+];
+
+export async function createSubscription(data) {
+  if (MOCK_MODE) {
+    const student = MOCK_USERS.find(u => u.role === 'STUDENT' && (u.student_id === data.student_identifier || u.email === data.student_identifier || u.name === data.student_identifier));
+    if (!student) throw new Error('Student not found');
+    if (data.immediate_charge && student.wallet_balance < data.amount) throw new Error('Insufficient balance');
+    if (data.immediate_charge) student.wallet_balance -= data.amount;
+    const newSub = { subscription_id: 'sub-' + Date.now(), student_name: student.name, student_identifier: student.student_id, plan_name: data.plan_name, amount: data.amount, billing_cycle: data.billing_cycle, next_billing_date: new Date(Date.now() + 1000*60*60*24*30).toISOString(), vendor_name: data.vendor_code || null, is_active: true };
+    MOCK_SUBSCRIPTIONS.push(newSub);
+    return { status: 'SUCCESS', message: 'Subscription created', subscription_id: newSub.subscription_id };
+  }
+  return handle(await fetch(`${API_URL}/admin/subscriptions`, { method: 'POST', headers: authHeaders(), body: JSON.stringify(data) }));
+}
+
+export async function getSubscriptions() {
+  if (MOCK_MODE) return MOCK_SUBSCRIPTIONS;
+  return handle(await fetch(`${API_URL}/admin/subscriptions`, { headers: authHeaders() }));
+}
+
+export async function cancelSubscription(subId) {
+  if (MOCK_MODE) {
+    const s = MOCK_SUBSCRIPTIONS.find(x => x.subscription_id === subId);
+    if (s) s.is_active = false;
+    return { status: 'SUCCESS', message: 'Subscription cancelled' };
+  }
+  const id = subId.replace('sub-', '');
+  return handle(await fetch(`${API_URL}/admin/subscriptions/${id}/cancel`, { method: 'POST', headers: authHeaders() }));
+}

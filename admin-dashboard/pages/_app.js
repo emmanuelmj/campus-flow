@@ -12,6 +12,7 @@ const PATHS = {
   deducreq:  'M9 2a1 1 0 000 2h2a1 1 0 100-2H9z',
   adduser:   'M8 9a3 3 0 100-6 3 3 0 000 6zM8 11a6 6 0 016 6H2a6 6 0 016-6zM16 7a1 1 0 10-2 0v1h-1a1 1 0 100 2h1v1a1 1 0 102 0v-1h1a1 1 0 100-2h-1V7z',
   analytics: 'M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zm6-4a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zm6-3a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z',
+  subs:      'M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4zM18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z',
 };
 
 const NAV = [
@@ -22,6 +23,7 @@ const NAV = [
   { href: '/add-user',        label: 'Add User',        icon: PATHS.adduser   },
   { href: '/deduct',          label: 'Deduct Wallet',   icon: PATHS.deduct    },
   { href: '/deduct-requests', label: 'Deduct Requests', icon: PATHS.deducreq  },
+  { href: '/subscriptions',   label: 'Subscriptions',   icon: PATHS.subs      },
   { href: '/analytics',       label: 'Analytics',       icon: PATHS.analytics },
 ];
 
