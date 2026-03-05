@@ -4,11 +4,12 @@ from sqlalchemy import or_
 from app import database, models, schemas
 from app.utils.security import require_student
 from datetime import datetime, timedelta
+from uuid import UUID
 
 router = APIRouter(tags=["student"])
 
 
-# ─── Wallet ──────────────────────────────────────────────────────────────────
+# ─── Wallet ────────────────────────────────────────────────────────────────────
 
 @router.get("/wallet")
 def get_wallet(
@@ -49,7 +50,7 @@ def top_up(
     return {"message": "Wallet topped up successfully", "new_balance": user.wallet_balance}
 
 
-# ─── Transactions ────────────────────────────────────────────────────────────
+# ─── Transactions ──────────────────────────────────────────────────────────────
 
 @router.get("/transactions")
 def get_transactions(
@@ -68,16 +69,16 @@ def get_transactions(
         results.append({
             "transaction_id": f"txn-{t.id}",
             "type": t.type,
-            "amount": -t.amount if t.sender_id == uid else t.amount,
-            "sender_id": t.sender_id,
-            "receiver_id": t.receiver_id,
+            "amount": -t.amount if str(t.sender_id) == uid else t.amount,
+            "sender_id": str(t.sender_id),
+            "receiver_id": str(t.receiver_id) if t.receiver_id else None,
             "timestamp": t.timestamp.isoformat() if t.timestamp else None,
             "status": t.status,
         })
     return results
 
 
-# ─── P2P Transfer ────────────────────────────────────────────────────────────
+# ─── P2P Transfer ──────────────────────────────────────────────────────────────
 
 @router.post("/transfer")
 def transfer(
@@ -90,13 +91,14 @@ def transfer(
 
     sender = db.query(models.User).filter(models.User.id == current_user["user_id"]).first()
 
-    # Find recipient by email or name
+    # Find recipient by student_id, email, or name
     recipient = (
         db.query(models.User)
         .filter(
             models.User.role == "STUDENT",
             or_(
                 models.User.email == req.recipient_identifier,
+                models.User.student_id == req.recipient_identifier,
                 models.User.name == req.recipient_identifier,
             ),
         )
@@ -104,7 +106,7 @@ def transfer(
     )
     if not recipient:
         raise HTTPException(status_code=404, detail="Recipient not found")
-    if recipient.id == sender.id:
+    if str(recipient.id) == str(sender.id):
         raise HTTPException(status_code=400, detail="Cannot transfer to yourself")
     if sender.wallet_balance < req.amount:
         raise HTTPException(status_code=400, detail="Insufficient balance")
@@ -129,7 +131,7 @@ def transfer(
     }
 
 
-# ─── Vendor Payment ─────────────────────────────────────────────────────────
+# ─── Vendor Payment ────────────────────────────────────────────────────────────
 
 @router.post("/pay-vendor")
 def pay_vendor(
@@ -171,7 +173,7 @@ def pay_vendor(
     }
 
 
-# ─── Subscriptions ───────────────────────────────────────────────────────────
+# ─── Subscriptions ─────────────────────────────────────────────────────────────
 
 @router.post("/subscribe")
 def subscribe(
@@ -179,13 +181,12 @@ def subscribe(
     current_user: dict = Depends(require_student),
     db: Session = Depends(database.get_db),
 ):
-    # Calculate next billing date based on a simple default cycle
     next_bill = datetime.utcnow() + timedelta(days=30)
 
     sub = models.Subscription(
         user_id=current_user["user_id"],
         plan_name=req.service_id,
-        amount=0.0,  # Price would come from a plans table in production
+        amount=0.0,
         billing_cycle="MONTHLY",
         next_billing_date=next_bill,
         is_active=True,
@@ -200,7 +201,7 @@ def subscribe(
     }
 
 
-# ─── Payment Requests (from vendors) ────────────────────────────────────────
+# ─── Payment Requests (from vendors) ──────────────────────────────────────────
 
 @router.get("/student/payment-requests")
 def get_payment_requests(
@@ -218,7 +219,6 @@ def get_payment_requests(
     )
     results = []
     for r in requests:
-        # Get vendor code for display
         vendor_profile = db.query(models.Vendor).filter(models.Vendor.user_id == r.vendor_id).first()
         results.append({
             "request_id": f"req-{r.id}",
@@ -232,14 +232,14 @@ def get_payment_requests(
 
 @router.post("/student/approve-payment/{request_id}")
 def approve_payment(
-    request_id: int,
+    request_id: UUID,  # UUID, not int
     current_user: dict = Depends(require_student),
     db: Session = Depends(database.get_db),
 ):
     pay_req = db.query(models.PaymentRequest).filter(models.PaymentRequest.id == request_id).first()
     if not pay_req:
         raise HTTPException(status_code=404, detail="Payment request not found")
-    if pay_req.student_id != current_user["user_id"]:
+    if str(pay_req.student_id) != current_user["user_id"]:
         raise HTTPException(status_code=403, detail="Not your payment request")
     if pay_req.status != "PENDING":
         raise HTTPException(status_code=400, detail="Request already processed")
@@ -272,7 +272,7 @@ def approve_payment(
     }
 
 
-# ─── Fines ───────────────────────────────────────────────────────────────────
+# ─── Fines ─────────────────────────────────────────────────────────────────────
 
 @router.get("/student/fines")
 def get_fines(
@@ -299,14 +299,14 @@ def get_fines(
 
 @router.post("/student/pay-fine/{fine_id}")
 def pay_fine(
-    fine_id: int,
+    fine_id: UUID,  # UUID, not int
     current_user: dict = Depends(require_student),
     db: Session = Depends(database.get_db),
 ):
     fine = db.query(models.Fine).filter(models.Fine.id == fine_id).first()
     if not fine:
         raise HTTPException(status_code=404, detail="Fine not found")
-    if fine.user_id != current_user["user_id"]:
+    if str(fine.user_id) != current_user["user_id"]:
         raise HTTPException(status_code=403, detail="Not your fine")
     if fine.status == "PAID":
         raise HTTPException(status_code=400, detail="Fine already paid")

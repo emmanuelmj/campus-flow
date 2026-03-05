@@ -13,21 +13,19 @@ def create_vendor(
     current_user: dict = Depends(require_admin),
     db: Session = Depends(database.get_db),
 ):
-    # Check if vendor_code already exists
-    existing = db.query(models.Vendor).filter(models.Vendor.vendor_code == req.vendor_id).first()
-    if existing:
+    # Check vendor_code uniqueness
+    if db.query(models.Vendor).filter(models.Vendor.vendor_code == req.vendor_id).first():
         raise HTTPException(status_code=400, detail="Vendor code already exists")
 
-    # Check if email already registered
-    existing_user = db.query(models.User).filter(models.User.email == req.contact_email).first()
-    if existing_user:
+    # Check email uniqueness
+    if db.query(models.User).filter(models.User.email == req.contact_email).first():
         raise HTTPException(status_code=400, detail="Email already registered")
 
-    # Create user account for vendor with a default password
+    # Create User account for vendor (default password: vendor123)
     vendor_user = models.User(
         name=req.business_name,
         email=req.contact_email,
-        password_hash=get_password_hash("vendor123"),  # default password for hackathon
+        password_hash=get_password_hash("vendor123"),
         role="VENDOR",
     )
     db.add(vendor_user)
@@ -47,7 +45,7 @@ def create_vendor(
     return {
         "status": "SUCCESS",
         "message": "Vendor created successfully",
-        "vendor_user_id": vendor_user.id,
+        "vendor_user_id": str(vendor_user.id),
     }
 
 
@@ -61,7 +59,7 @@ def list_vendors(
         {
             "vendor_id": v.vendor_code,
             "business_name": v.vendor_name,
-            "user_id": v.user_id,
+            "user_id": str(v.user_id),
             "created_at": v.created_at.isoformat() if v.created_at else None,
         }
         for v in vendors
@@ -77,14 +75,15 @@ def add_fine(
     if req.amount <= 0:
         raise HTTPException(status_code=400, detail="Amount must be positive")
 
-    # Find student by email or name
+    # Find student by student_id, email, or name
     student = (
         db.query(models.User)
         .filter(
             models.User.role == "STUDENT",
             or_(
-                models.User.email == req.student_id,
-                models.User.name == req.student_id,
+                models.User.email == req.student_identifier,
+                models.User.student_id == req.student_identifier,
+                models.User.name == req.student_identifier,
             ),
         )
         .first()
@@ -119,17 +118,13 @@ def add_fine(
     db.commit()
     db.refresh(fine)
 
-    result = {
-        "status": "SUCCESS",
-        "fine_id": f"fine-{fine.id}",
-        "message": "Fine issued",
-    }
+    result = {"status": "SUCCESS", "fine_id": f"fine-{fine.id}", "message": "Fine issued"}
     if req.force_deduct:
         result["deducted"] = deducted
-        if deducted:
-            result["message"] = "Fine issued and amount deducted from wallet"
-        else:
-            result["message"] = "Fine issued but insufficient balance to deduct"
+        result["message"] = (
+            "Fine issued and amount deducted from wallet" if deducted
+            else "Fine issued but insufficient balance to deduct"
+        )
     return result
 
 
@@ -141,11 +136,12 @@ def get_users(
     users = db.query(models.User).order_by(models.User.created_at.desc()).all()
     return [
         {
-            "id": u.id,
+            "id": str(u.id),
             "name": u.name,
             "email": u.email,
             "role": u.role,
             "wallet_balance": u.wallet_balance,
+            "student_id": u.student_id,
             "created_at": u.created_at.isoformat() if u.created_at else None,
         }
         for u in users
@@ -165,8 +161,8 @@ def admin_transactions(
     return [
         {
             "transaction_id": f"txn-{t.id}",
-            "sender_id": t.sender_id,
-            "receiver_id": t.receiver_id,
+            "sender_id": str(t.sender_id) if t.sender_id else None,
+            "receiver_id": str(t.receiver_id) if t.receiver_id else None,
             "type": t.type,
             "amount": t.amount,
             "timestamp": t.timestamp.isoformat() if t.timestamp else None,

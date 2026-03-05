@@ -1,13 +1,16 @@
+import os
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+from dotenv import load_dotenv
 
-# Uses sqlite for quick hackathon spinup if Postgres isn't ready
-# Replace with Postgres URL: postgresql://user:password@localhost/dbname
-SQLALCHEMY_DATABASE_URL = "sqlite:///./campusflow.db"
+load_dotenv()
+
+# Replace with Postgres URL from env
+SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/campusflow")
 
 engine = create_engine(
-    SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
+    SQLALCHEMY_DATABASE_URL
 )
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 

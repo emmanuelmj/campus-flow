@@ -16,13 +16,14 @@ def request_payment(
     if req.amount <= 0:
         raise HTTPException(status_code=400, detail="Amount must be positive")
 
-    # Find student by email or name
+    # Find student by student_id, email, or name
     student = (
         db.query(models.User)
         .filter(
             models.User.role == "STUDENT",
             or_(
                 models.User.email == req.student_identifier,
+                models.User.student_id == req.student_identifier,
                 models.User.name == req.student_identifier,
             ),
         )
@@ -62,7 +63,7 @@ def vendor_transactions(
     return [
         {
             "transaction_id": f"txn-{t.id}",
-            "sender_id": t.sender_id,
+            "sender_id": str(t.sender_id) if t.sender_id else None,
             "amount": t.amount,
             "timestamp": t.timestamp.isoformat() if t.timestamp else None,
             "status": t.status,
