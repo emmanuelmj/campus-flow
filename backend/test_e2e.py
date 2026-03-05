@@ -119,5 +119,53 @@ else:
     sys.exit(1)
 
 
+# 8. Admin creates a new user
+print(f"\n{B}Step 8: Admin creates user{N}")
+step("POST /admin/create-user (VENDOR2)", "post", "/admin/create-user", token=admin_token, json={
+    "username": "Vendor Two",
+    "email": f"vendor2-{TAG}@test.com",
+    "password": PASSWORD,
+    "role": "VENDOR",
+    "vendor_code": f"v2-{TAG}",
+    "business_name": "Vendor Two Shop"
+}, expect=(201,))
+
+# 9. Admin manual deduct
+print(f"\n{B}Step 9: Admin manual deduct{N}")
+step("POST /admin/manual-deduct (100)", "post", "/admin/manual-deduct", token=admin_token, json={
+    "user_identifier": STUDENT_EMAIL,
+    "amount": 100.00,
+    "reason": "Property damage"
+})
+
+# 10. Vendor request admin deduct
+print(f"\n{B}Step 10: Vendor requests admin deduct{N}")
+vendor_login = step("POST /auth/login (VENDOR)", "post", "/auth/login", json={
+    "email": VENDOR_EMAIL,
+    "password": PASSWORD,
+})
+vendor_token = vendor_login["access_token"]
+deduct_req = step("POST /vendor/request-admin-deduct", "post", "/vendor/request-admin-deduct", token=vendor_token, json={
+    "student_identifier": STUDENT_EMAIL,
+    "amount": 50.00,
+    "reason": "Lost item"
+})
+req_id = deduct_req["request_id"]
+
+# 11. Admin approves deduct request
+print(f"\n{B}Step 11: Admin approves deduct request{N}")
+step(f"POST /admin/deduct-requests/{req_id}/approve", "post", f"/admin/deduct-requests/{req_id}/approve", token=admin_token, json={})
+
+# 12. Student profile lookup
+print(f"\n{B}Step 12: Admin lookup student profile{N}")
+profile = step("GET /admin/student/{identifier}", "get", f"/admin/student/{STUDENT_EMAIL}", token=admin_token)
+print(f"    Student balance from profile: {profile['user']['wallet_balance']}")
+
+if profile['user']['wallet_balance'] == 600.0:
+    print(f"    {G}✓ Balance verified: ₹600.0 (expected ₹600.00){N}")
+else:
+    print(f"    {R}✗ Balance mismatch: got ₹{profile['user']['wallet_balance']}, expected ₹600.00{N}")
+    sys.exit(1)
+
 # ═══════════════════════════════════════════════════════════════════════════════
-print(f"\n{B}{G}═══ ALL 7 STEPS PASSED ═══{N}\n")
+print(f"\n{B}{G}═══ ALL 12 STEPS PASSED ═══{N}\n")
