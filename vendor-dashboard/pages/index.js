@@ -11,7 +11,14 @@ export default function VendorHome() {
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token) { router.replace("/login"); return; }
-    getTransactions().then(t => { setTxns(t); setLoading(false); }).catch(() => setLoading(false));
+    getTransactions().then(res => {
+      let t = [];
+      if (res && res.data && Array.isArray(res.data.transactions)) t = res.data.transactions;
+      else if (res && Array.isArray(res.data)) t = res.data;
+      else if (Array.isArray(res)) t = res;
+      setTxns(t);
+      setLoading(false);
+    }).catch(() => setLoading(false));
   }, []);
 
   const today = new Date().toDateString();
@@ -74,8 +81,8 @@ export default function VendorHome() {
               <tr key={i} style={{ borderTop: "1px solid #f8fafc" }}
                 onMouseEnter={e => e.currentTarget.style.background = "#fafafa"}
                 onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
-                <td style={{ padding: "11px 18px", color: "#94a3b8", fontFamily: "monospace", fontSize: 11 }}>{t.transaction_id ? String(t.transaction_id).slice(0, 10) + "..." : "—"}</td>
-                <td style={{ padding: "11px 18px", color: "#64748b", fontFamily: "monospace", fontSize: 12 }}>{t.sender_id ? String(t.sender_id).slice(0, 12) + "..." : "—"}</td>
+                <td style={{ padding: "11px 18px", color: "#94a3b8", fontFamily: "monospace", fontSize: 11 }}>{t.id ? String(t.id).slice(0, 10) + "..." : "—"}</td>
+                <td style={{ padding: "11px 18px", color: "#64748b", fontFamily: "monospace", fontSize: 12 }}>{t.counterparty_name ? String(t.counterparty_name).slice(0, 12) + "..." : "—"}</td>
                 <td style={{ padding: "11px 18px", fontWeight: 700, color: "#10b981" }}>₹{(t.amount || 0).toFixed(0)}</td>
                 <td style={{ padding: "11px 18px", color: "#94a3b8", fontSize: 12 }}>{t.timestamp ? new Date(t.timestamp).toLocaleDateString() : "—"}</td>
                 <td style={{ padding: "11px 18px" }}>

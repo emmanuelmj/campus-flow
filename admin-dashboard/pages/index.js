@@ -3,19 +3,19 @@ import { useRouter } from "next/router";
 import { getUsers, getTransactions } from "../services/api";
 
 const TYPE_BADGE = {
-  P2P:            { bg: "#dbeafe", color: "#1d4ed8" },
+  P2P: { bg: "#dbeafe", color: "#1d4ed8" },
   VENDOR_PAYMENT: { bg: "#fef3c7", color: "#b45309" },
-  TOP_UP:         { bg: "#d1fae5", color: "#065f46" },
-  FINE:           { bg: "#fee2e2", color: "#991b1b" },
-  SUB:            { bg: "#ede9fe", color: "#5b21b6" },
+  TOP_UP: { bg: "#d1fae5", color: "#065f46" },
+  FINE: { bg: "#fee2e2", color: "#991b1b" },
+  SUB: { bg: "#ede9fe", color: "#5b21b6" },
 };
 
 const STAT_CARDS = [
-  { key: "totalUsers", label: "Total Users",   color: "#6366f1", bg: "#eef2ff", icon: "👥" },
-  { key: "students",   label: "Students",       color: "#8b5cf6", bg: "#f5f3ff", icon: "🎓" },
-  { key: "vendors",    label: "Vendors",         color: "#f59e0b", bg: "#fffbeb", icon: "🏪" },
-  { key: "txnCount",   label: "Transactions",    color: "#3b82f6", bg: "#eff6ff", icon: "💳" },
-  { key: "volume",     label: "Total Volume",    color: "#10b981", bg: "#ecfdf5", icon: "📈", prefix: "₹" },
+  { key: "totalUsers", label: "Total Users", color: "#6366f1", bg: "#eef2ff", icon: "👥" },
+  { key: "students", label: "Students", color: "#8b5cf6", bg: "#f5f3ff", icon: "🎓" },
+  { key: "vendors", label: "Vendors", color: "#f59e0b", bg: "#fffbeb", icon: "🏪" },
+  { key: "txnCount", label: "Transactions", color: "#3b82f6", bg: "#eff6ff", icon: "💳" },
+  { key: "volume", label: "Total Volume", color: "#10b981", bg: "#ecfdf5", icon: "📈", prefix: "₹" },
 ];
 
 export default function Overview() {
@@ -27,10 +27,13 @@ export default function Overview() {
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token) { router.push("/login"); return; }
-    Promise.all([getUsers(), getTransactions()]).then(([users, txns]) => {
+    Promise.all([getUsers(), getTransactions()]).then(([usersRes, txnsRes]) => {
+      // The FastAPI response has a 'data' wrapper when using my custom pagination wrapper, so extract the array
+      const users = usersRes.data || usersRes || [];
+      const txns = txnsRes.data || txnsRes || [];
       const students = users.filter(u => u.role === "STUDENT").length;
-      const vendors  = users.filter(u => u.role === "VENDOR").length;
-      const volume   = txns.reduce((s, t) => s + (t.amount || 0), 0);
+      const vendors = users.filter(u => u.role === "VENDOR").length;
+      const volume = txns.reduce((s, t) => s + (t.amount || 0), 0);
       setStats({ totalUsers: users.length, students, vendors, txnCount: txns.length, volume });
       setRecentTxns(txns.slice(0, 8));
       setLoading(false);

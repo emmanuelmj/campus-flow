@@ -12,8 +12,9 @@ router = APIRouter(prefix="/vendor", tags=["vendor"])
 # ─── Local request schema ─────────────────────────────────────────────────────
 
 class PaymentRequestBody(BaseModel):
-    student_email: str
+    student_identifier: str
     amount: Decimal
+    description: str = ""
 
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -24,15 +25,27 @@ def _require_vendor(current_user: dict):
 
 
 def _find_student(db: Session, identifier: str):
+    import uuid
+    is_uuid = False
+    try:
+        uuid_obj = uuid.UUID(identifier)
+        is_uuid = True
+    except ValueError:
+        pass
+
+    filters = [
+        models.User.email == identifier,
+        models.User.student_id == identifier,
+        models.User.name == identifier,
+    ]
+    if is_uuid:
+        filters.append(models.User.id == uuid_obj)
+
     return (
         db.query(models.User)
         .filter(
             models.User.role == "STUDENT",
-            or_(
-                models.User.email == identifier,
-                models.User.student_id == identifier,
-                models.User.name == identifier,
-            ),
+            or_(*filters),
         )
         .first()
     )
@@ -53,14 +66,14 @@ def request_payment(
     if amount <= 0:
         raise HTTPException(status_code=400, detail="Amount must be positive")
 
-    student = db.query(models.User).filter(models.User.email == req.student_email, models.User.role == "STUDENT").first()
+    student = _find_student(db, req.student_identifier)
     if not student:
-        raise HTTPException(status_code=404, detail="Student not found with that email")
+        raise HTTPException(status_code=404, detail="Student not found with that identifier")
 
     try:
         pay_req = models.PaymentRequest(
             vendor_id=current_user["user_id"], student_id=student.id,
-            amount=amount, description="", status="PENDING",
+            amount=amount, description=req.description, status="PENDING",
         )
         db.add(pay_req)
         db.commit()

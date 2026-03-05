@@ -1,16 +1,16 @@
-const API_URL = 'http://localhost:8000';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 // ─── Toggle this to false once backend is running ────────────────────────────
-const MOCK_MODE = true;
+const MOCK_MODE = false;
 
 // ─── Mock data ───────────────────────────────────────────────────────────────
 const MOCK_TRANSACTIONS = [
   { transaction_id: 'txn-v001', sender_id: 'uuid-001', amount: 120.00, status: 'COMPLETED', timestamp: new Date(Date.now() - 1000 * 60 * 10).toISOString() },
-  { transaction_id: 'txn-v002', sender_id: 'uuid-003', amount: 85.50,  status: 'COMPLETED', timestamp: new Date(Date.now() - 1000 * 60 * 40).toISOString() },
+  { transaction_id: 'txn-v002', sender_id: 'uuid-003', amount: 85.50, status: 'COMPLETED', timestamp: new Date(Date.now() - 1000 * 60 * 40).toISOString() },
   { transaction_id: 'txn-v003', sender_id: 'uuid-002', amount: 200.00, status: 'COMPLETED', timestamp: new Date(Date.now() - 1000 * 60 * 90).toISOString() },
-  { transaction_id: 'txn-v004', sender_id: 'uuid-004', amount: 45.00,  status: 'COMPLETED', timestamp: new Date(Date.now() - 1000 * 60 * 200).toISOString() },
+  { transaction_id: 'txn-v004', sender_id: 'uuid-004', amount: 45.00, status: 'COMPLETED', timestamp: new Date(Date.now() - 1000 * 60 * 200).toISOString() },
   { transaction_id: 'txn-v005', sender_id: 'uuid-001', amount: 310.00, status: 'COMPLETED', timestamp: new Date(Date.now() - 1000 * 60 * 60 * 25).toISOString() },
-  { transaction_id: 'txn-v006', sender_id: 'uuid-003', amount: 60.00,  status: 'COMPLETED', timestamp: new Date(Date.now() - 1000 * 60 * 60 * 26).toISOString() },
+  { transaction_id: 'txn-v006', sender_id: 'uuid-003', amount: 60.00, status: 'COMPLETED', timestamp: new Date(Date.now() - 1000 * 60 * 60 * 26).toISOString() },
 ];
 
 // ─── Real API helpers ─────────────────────────────────────────────────────────
@@ -25,7 +25,13 @@ function authHeaders() {
 async function handle(res) {
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || `Request failed (${res.status})`);
+    let msg = err.detail || `Request failed (${res.status})`;
+    if (Array.isArray(msg)) {
+      msg = msg.map(m => typeof m === 'object' ? m.msg || JSON.stringify(m) : m).join(', ');
+    } else if (typeof msg === 'object') {
+      msg = JSON.stringify(msg);
+    }
+    throw new Error(msg);
   }
   return res.json();
 }
@@ -63,8 +69,8 @@ export async function getTransactions() {
 
 // ─── Vendor deduct requests ───────────────────────────────────────────────────
 const MOCK_VENDOR_DEDUCT_REQUESTS = [
-  { id: 'vdr-001', student_name: 'Alice Johnson', student_identifier: 'CS-2024-001', amount: 250.00, reason: 'Unpaid cafeteria dues - March', status: 'PENDING', created_at: new Date(Date.now() - 1000*60*60*2).toISOString(), resolved_at: null },
-  { id: 'vdr-002', student_name: 'Bob Smith', student_identifier: 'CS-2024-002', amount: 120.00, reason: 'Monthly subscription dues', status: 'APPROVED', created_at: new Date(Date.now() - 1000*60*60*24).toISOString(), resolved_at: new Date(Date.now() - 1000*60*60*20).toISOString() },
+  { id: 'vdr-001', student_name: 'Alice Johnson', student_identifier: 'CS-2024-001', amount: 250.00, reason: 'Unpaid cafeteria dues - March', status: 'PENDING', created_at: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(), resolved_at: null },
+  { id: 'vdr-002', student_name: 'Bob Smith', student_identifier: 'CS-2024-002', amount: 120.00, reason: 'Monthly subscription dues', status: 'APPROVED', created_at: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(), resolved_at: new Date(Date.now() - 1000 * 60 * 60 * 20).toISOString() },
 ];
 
 export async function requestAdminDeduct(data) {

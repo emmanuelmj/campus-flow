@@ -269,15 +269,27 @@ def get_student_profile(
     current_user: dict = Depends(require_admin),
     db: Session = Depends(database.get_db),
 ):
+    import uuid
+    is_uuid = False
+    try:
+        uuid_obj = uuid.UUID(identifier)
+        is_uuid = True
+    except ValueError:
+        pass
+
+    filters = [
+        models.User.email == identifier,
+        models.User.student_id == identifier,
+        models.User.name == identifier,
+    ]
+    if is_uuid:
+        filters.append(models.User.id == uuid_obj)
+
     student = (
         db.query(models.User)
         .filter(
             models.User.role == "STUDENT",
-            or_(
-                models.User.email == identifier,
-                models.User.student_id == identifier,
-                models.User.name == identifier,
-            ),
+            or_(*filters),
         )
         .first()
     )
