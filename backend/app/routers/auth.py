@@ -57,5 +57,6 @@ def login(user_credentials: schemas.LoginRequest, db: Session = Depends(database
         "access_token": access_token,
         "token_type": "bearer",
         "role": role_str,
-        "user_id": user.id,
+        "user_id": str(user.id),
+        "student_id": user.student_id if hasattr(user, 'student_id') else None,
     }

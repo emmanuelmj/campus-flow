@@ -3,7 +3,10 @@ import {
     Wallet, Send, Store, ChevronLeft, ArrowUpRight, ArrowDownLeft,
     AlertCircle, CheckCircle2, Receipt, CalendarDays, User, Sparkles,
     X, Copy, Check, Zap, ArrowRight, CreditCard, Building, RefreshCw,
+    QrCode, Scan, LogOut
 } from 'lucide-react';
+import { QRCodeCanvas } from 'qrcode.react';
+import { Html5QrcodeScanner } from 'html5-qrcode';
 import { apiRequest, setToken, clearToken } from './api.js';
 
 export default function App() {
@@ -14,6 +17,7 @@ export default function App() {
     const [paymentRequests, setPaymentRequests] = useState([]);
     const [subscriptions, setSubscriptions] = useState([]);
     const [userEmail, setUserEmail] = useState('');
+    const [studentId, setStudentId] = useState('');
     const [isLoggedIn, setIsLoggedIn] = useState(false);
     const [dataLoading, setDataLoading] = useState(false);
 
@@ -21,7 +25,11 @@ export default function App() {
     const [isAiLoading, setIsAiLoading] = useState(false);
     const [aiResult, setAiResult] = useState('');
 
-    const navigate = (screen) => setCurrentScreen(screen);
+    const [navProps, setNavProps] = useState({});
+    const navigate = (screen, props = {}) => {
+        setNavProps(props);
+        setCurrentScreen(screen);
+    };
 
     // ── Data fetching ──────────────────────────────────────────────────────────
     const refreshWallet = useCallback(async () => {
@@ -168,7 +176,7 @@ export default function App() {
                         </div>
                         {showMenu && (
                             <button
-                                onClick={() => { clearToken(); setIsLoggedIn(false); setBalance(0); setTransactions([]); setFines([]); navigate('Login'); }}
+                                onClick={() => { clearToken(); setIsLoggedIn(false); setBalance(0); setTransactions([]); setFines([]); setStudentId(''); navigate('Login'); }}
                                 className="w-10 h-10 rounded-2xl bg-white border border-slate-100 shadow-sm flex items-center justify-center hover:bg-red-50 group transition-colors"
                                 title="Logout"
                             >
@@ -231,6 +239,7 @@ export default function App() {
                 }
                 setToken(data.access_token);
                 setUserEmail(email);
+                setStudentId(data.student_id || email); // fallback to email if student_id not yet provided
                 setIsLoggedIn(true);
                 navigate('Dashboard');
             } catch (e) {
@@ -303,8 +312,32 @@ export default function App() {
         const unpaidFines = fines.filter(f => f.status === 'UNPAID').length;
 
         return (
-            <MobileWrapper title="Dashboard" showMenu>
-                <div className="px-6 space-y-4">
+            <MobileWrapper showMenu>
+                {/* Header Profile & QR Actions */}
+                <div className="bg-white px-6 py-5 rounded-b-[2rem] shadow-sm mb-6 flex justify-between items-center relative z-10 w-full mb-0 pb-6 rounded-none shadow-none bg-transparent">
+                    <div>
+                        <p className="text-slate-400 text-sm font-medium">Hello there,</p>
+                        <h2 className="text-xl font-bold text-slate-800 tracking-tight">{userEmail.split('@')[0]}</h2>
+                    </div>
+                    <div className="flex gap-2">
+                        <button onClick={() => navigate('Scan')} title="Scan QR" className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-600 hover:bg-slate-100 transition-colors shadow-sm">
+                            <Scan size={18} />
+                        </button>
+                        <button onClick={() => navigate('MyQr')} title="My QR Code" className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-600 hover:bg-slate-100 transition-colors shadow-sm">
+                            <QrCode size={18} />
+                        </button>
+                        <div className="w-px h-10 bg-slate-200 mx-1"></div>
+                        <button
+                            onClick={() => { clearToken(); setIsLoggedIn(false); setBalance(0); setTransactions([]); setFines([]); setStudentId(''); navigate('Login'); }}
+                            title="Logout"
+                            className="w-10 h-10 rounded-xl bg-white border border-slate-100 flex items-center justify-center text-slate-600 hover:bg-red-50 hover:text-red-500 hover:border-red-100 transition-colors shadow-sm"
+                        >
+                            <LogOut size={18} />
+                        </button>
+                    </div>
+                </div>
+
+                <div className="px-6 space-y-4 pt-2">
 
                     {/* Balance */}
                     <div className="bg-gradient-to-br from-blue-600 via-indigo-600 to-violet-600 shadow-lg shadow-blue-500/30 p-6 rounded-[24px] relative overflow-hidden">
@@ -417,7 +450,7 @@ export default function App() {
     // ── SEND / PAY VENDOR ──────────────────────────────────────────────────────
     const SendScreen = ({ isVendor }) => {
         const [amount, setAmount] = useState('');
-        const [target, setTarget] = useState('');
+        const [target, setTarget] = useState(navProps.initialTarget || '');
         const [status, setStatus] = useState(null);
         const [loading, setLoading] = useState(false);
         const [vendorsList, setVendorsList] = useState([]);
@@ -650,6 +683,82 @@ export default function App() {
         );
     };
 
+    // ── QR SCANNER & GENERATOR ─────────────────────────────────────────────────
+    const MyQrScreen = () => {
+        const qrValue = JSON.stringify({ app: 'campusflow', id: studentId });
+
+        return (
+            <MobileWrapper title="My QR Code" showBack>
+                <div className="flex flex-col items-center justify-center p-6 mt-8">
+                    <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 flex flex-col items-center">
+                        <div className="bg-slate-50 p-4 rounded-3xl mb-6">
+                            <QRCodeCanvas value={qrValue} size={220} bgColor={"#f8fafc"} fgColor={"#0f172a"} level={"H"} />
+                        </div>
+                        <h2 className="text-xl font-bold tracking-tight text-slate-800">{userEmail.split('@')[0]}</h2>
+                        <p className="text-sm font-medium text-slate-400 mt-1 mb-6">{studentId}</p>
+                        <div className="flex gap-3 w-full">
+                            <button onClick={() => copyToClipboard(studentId)} className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 py-3 rounded-xl font-semibold flex items-center justify-center gap-2 transition-colors text-sm">
+                                <Copy size={18} /> Copy ID
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </MobileWrapper>
+        );
+    };
+
+    const ScanScreen = () => {
+        const [error, setError] = useState('');
+
+        useEffect(() => {
+            const scanner = new Html5QrcodeScanner('qr-reader', { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 }, false);
+
+            scanner.render(
+                (decodedText) => {
+                    try {
+                        const data = JSON.parse(decodedText);
+                        if (data.app === 'campusflow' && data.id) {
+                            scanner.clear();
+                            // Determine if it's a vendor (V-) or student to auto-route appropriately
+                            const isVendorId = data.id.startsWith('V-');
+                            navigate(isVendorId ? 'VendorPayment' : 'Transfer', { initialTarget: data.id });
+                        } else {
+                            setError('Invalid CampusFlow QR Code');
+                        }
+                    } catch (e) {
+                        // Not our JSON format, might just be a raw ID string
+                        scanner.clear();
+                        navigate('Transfer', { initialTarget: decodedText });
+                    }
+                },
+                (err) => {
+                    // Ignore continuous scanning errors
+                }
+            );
+
+            return () => {
+                scanner.clear().catch(console.error);
+            };
+        }, []);
+
+        return (
+            <MobileWrapper title="Scan to Pay" showBack>
+                <div className="p-6">
+                    <p className="text-center text-slate-500 text-sm mb-6">Position the QR code within the frame</p>
+                    <div className="bg-white p-4 rounded-[2rem] shadow-sm border border-slate-100 overflow-hidden">
+                        <div id="qr-reader" className="w-full rounded-2xl overflow-hidden [&_video]:rounded-2xl [&_video]:object-cover"></div>
+                    </div>
+                    {error && (
+                        <div className="mt-6 p-4 bg-rose-50 border border-rose-100 rounded-xl flex items-center gap-3 text-sm text-rose-700">
+                            <AlertCircle size={18} className="shrink-0" />
+                            <p className="font-medium">{error}</p>
+                        </div>
+                    )}
+                </div>
+            </MobileWrapper>
+        );
+    };
+
     // ── FINES ──────────────────────────────────────────────────────────────────
     const FinesScreen = () => {
         const [paying, setPaying] = useState(null);
@@ -799,6 +908,8 @@ export default function App() {
         case 'Transfer': return <SendScreen isVendor={false} />;
         case 'VendorPayment': return <SendScreen isVendor={true} />;
         case 'PaymentRequests': return <PaymentRequestsScreen />;
+        case 'Scan': return <ScanScreen />;
+        case 'MyQr': return <MyQrScreen />;
         case 'Transactions': return <HistoryScreen />;
         case 'Fines': return <FinesScreen />;
         case 'Subscriptions': return <SubscriptionsScreen />;
