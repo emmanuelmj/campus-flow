@@ -1,8 +1,11 @@
-import re
+import os
 
-API_JS   = "C:/Users/Aditya/OneDrive/Desktop/CF/campus-flow/admin-dashboard/services/api.js"
-APP_JS   = "C:/Users/Aditya/OneDrive/Desktop/CF/campus-flow/admin-dashboard/pages/_app.js"
-SUBS_JS  = "C:/Users/Aditya/OneDrive/Desktop/CF/campus-flow/admin-dashboard/pages/subscriptions.js"
+# Get the base directory of the project
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+API_JS   = os.path.join(BASE_DIR, "admin-dashboard", "services", "api.js")
+APP_JS   = os.path.join(BASE_DIR, "admin-dashboard", "pages", "_app.js")
+SUBS_JS  = os.path.join(BASE_DIR, "admin-dashboard", "pages", "subscriptions.js")
 
 # ── 1. Append to api.js ───────────────────────────────────────────────────────
 api_addition = """

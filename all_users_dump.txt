@@ -1,0 +1,6 @@
+Total users: 5
+ID: 627e7a81-fd64-4db9-b6b2-e1eed851a91b | Name: Super Admin | Role: UserRole.ADMIN | Email: admin@campusflow.com
+ID: 2546b8c8-aa7c-4252-b2fe-f25deff62782 | Name: John Vendor | Role: UserRole.VENDOR | Email: vendor@campusflow.com
+ID: 28c523c6-7661-46e1-98ec-f1637a273671 | Name: Block-1 Canteen | Role: UserRole.VENDOR | Email: b1-canteen@campusflow.com
+ID: 1ef6ebef-3ef8-4533-8b34-df4e4f019e77 | Name: Alice Student | Role: UserRole.STUDENT | Email: student@campusflow.com
+ID: ae18a1fc-10e4-4301-97b9-5021bf07be40 | Name: Aditya | Role: UserRole.STUDENT | Email: Aditya@campusflow.com

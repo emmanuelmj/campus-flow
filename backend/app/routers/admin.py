@@ -135,18 +135,24 @@ def get_users(
     db: Session = Depends(database.get_db),
 ):
     users = db.query(models.User).order_by(models.User.created_at.desc()).all()
-    return [
-        {
+    results = []
+    
+    # Pre-fetch all vendors to easily map vendor_code
+    vendors = db.query(models.Vendor).all()
+    vendor_map = {v.user_id: v.vendor_code for v in vendors}
+
+    for u in users:
+        results.append({
             "id": str(u.id),
             "name": u.name,
             "email": u.email,
             "role": u.role,
             "wallet_balance": u.wallet_balance,
             "student_id": u.student_id,
+            "vendor_code": vendor_map.get(u.id),
             "created_at": u.created_at.isoformat() if u.created_at else None,
-        }
-        for u in users
-    ]
+        })
+    return results
 
 
 @router.get("/transactions")
@@ -159,15 +165,23 @@ def admin_transactions(
         .order_by(models.Transaction.timestamp.desc())
         .all()
     )
+    
+    # Pre-fetch users mapping to attach names easily
+    users = db.query(models.User).all()
+    user_map = {u.id: u.name for u in users}
+
     return [
         {
             "transaction_id": f"txn-{t.id}",
             "sender_id": str(t.sender_id) if t.sender_id else None,
+            "sender_name": user_map.get(t.sender_id, "System") if t.sender_id else "System",
             "receiver_id": str(t.receiver_id) if t.receiver_id else None,
+            "receiver_name": user_map.get(t.receiver_id, "System") if t.receiver_id else "System",
             "type": t.type,
             "amount": t.amount,
             "timestamp": t.timestamp.isoformat() if t.timestamp else None,
             "status": t.status,
+            "description": getattr(t, 'description', None) or getattr(t, 'note', None) or getattr(t, 'reason', None) or "",
         }
         for t in txns
     ]
@@ -218,6 +232,69 @@ def create_user(
 
     return {"status": "SUCCESS", "message": "User created successfully", "user_id": str(new_user.id)}
 
+@router.post("/bulk-create-users", status_code=201)
+def bulk_create_users(
+    req: schemas.BulkUserCreate,
+    current_user: dict = Depends(require_admin),
+    db: Session = Depends(database.get_db),
+):
+    valid_roles = {"STUDENT", "VENDOR", "ADMIN"}
+    successful = 0
+    failed = 0
+    errors = []
+
+    for user_req in req.users:
+        try:
+            if user_req.role.upper() not in valid_roles:
+                raise ValueError(f"Invalid role: {user_req.role}")
+            
+            if db.query(models.User).filter(models.User.email == user_req.email).first():
+                raise ValueError(f"Email already registered: {user_req.email}")
+            
+            if user_req.role.upper() == "STUDENT" and user_req.student_id:
+                if db.query(models.User).filter(models.User.student_id == user_req.student_id).first():
+                    raise ValueError(f"Student ID already registered: {user_req.student_id}")
+            
+            if user_req.role.upper() == "VENDOR":
+                if not user_req.vendor_code or not user_req.business_name:
+                    raise ValueError("vendor_code and business_name required for VENDOR")
+                if db.query(models.Vendor).filter(models.Vendor.vendor_code == user_req.vendor_code).first():
+                    raise ValueError(f"Vendor code already exists: {user_req.vendor_code}")
+            
+            new_user = models.User(
+                name=user_req.username,
+                email=user_req.email,
+                password_hash=get_password_hash(user_req.password),
+                role=user_req.role.upper(),
+                student_id=user_req.student_id if user_req.role.upper() == "STUDENT" else None,
+            )
+            db.add(new_user)
+            db.commit()
+            db.refresh(new_user)
+            
+            if user_req.role.upper() == "VENDOR":
+                vendor_profile = models.Vendor(
+                    user_id=new_user.id,
+                    vendor_name=user_req.business_name,
+                    vendor_code=user_req.vendor_code,
+                )
+                db.add(vendor_profile)
+                db.commit()
+            
+            successful += 1
+        except Exception as e:
+            db.rollback()
+            failed += 1
+            errors.append(str(e))
+
+    return {
+        "status": "SUCCESS" if successful > 0 else "FAILED",
+        "message": f"Successfully imported {successful} users. Failed: {failed}",
+        "successful": successful,
+        "failed": failed,
+        "errors": errors
+    }
+
 
 @router.post("/manual-deduct")
 def manual_deduct(
@@ -261,6 +338,7 @@ def manual_deduct(
         "new_balance": user.wallet_balance,
         "transaction_id": "txn-" + str(txn.id),
     }
+
 
 @router.post("/manual-topup")
 def manual_topup(
@@ -326,15 +404,24 @@ def get_student_profile(
     if is_uuid:
         filters.append(models.User.id == uuid_obj)
 
+    # First, try to find a STUDENT
     student = (
         db.query(models.User)
         .filter(
-            models.User.role == "STUDENT",
+            models.User.role == models.UserRole.STUDENT,
             or_(*filters),
         )
         .first()
     )
+    
     if not student:
+        # Check if the user exists at all but has a different role
+        any_user = db.query(models.User).filter(or_(*filters)).first()
+        if any_user:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"User found but role is {any_user.role}, not STUDENT"
+            )
         raise HTTPException(status_code=404, detail="Student not found")
 
     txns = (

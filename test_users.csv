@@ -1,0 +1,4 @@
+username,email,password,role,student_id,vendor_code,business_name
+Test Student 1,teststudent1@uni.edu,pass123,STUDENT,TS-001,,
+Test Student 2,teststudent2@uni.edu,pass123,STUDENT,TS-002,,
+Test Vendor,testvendor1@uni.edu,vendor123,VENDOR,,TV-001,Test Vendor Business

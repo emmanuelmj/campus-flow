@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run dev)",
+      "Bash(curl -s http://localhost:8000/)",
+      "Bash(venv/Scripts/uvicorn app.main:app --reload)",
+      "Bash(pg_isready -h localhost -p 5432)",
+      "Bash(psql -U postgres -h localhost -p 5432 -c \"\\\\l\")"
+    ]
+  }
+}

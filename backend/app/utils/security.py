@@ -3,6 +3,13 @@ from datetime import datetime, timedelta
 from typing import Optional
 from uuid import UUID
 
+# Fix passlib 1.7.4 incompatibility with bcrypt >= 4.0.0
+import bcrypt as _bcrypt
+if not hasattr(_bcrypt, '__about__'):
+    class _about:
+        __version__ = _bcrypt.__version__
+    _bcrypt.__about__ = _about()
+
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from fastapi import Depends, HTTPException, status

@@ -1,4 +1,3 @@
-import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
@@ -7,18 +6,29 @@ import DashboardScreen from './screens/DashboardScreen';
 import TransferScreen from './screens/TransferScreen';
 import VendorPaymentScreen from './screens/VendorPaymentScreen';
 import TransactionsScreen from './screens/TransactionsScreen';
+import FinesScreen from './screens/FinesScreen';
+import SubscriptionsScreen from './screens/SubscriptionsScreen';
 
 const Stack = createNativeStackNavigator();
+
+const headerStyle = {
+  headerStyle: { backgroundColor: '#F7F7F9' },
+  headerShadowVisible: false,
+  headerTintColor: '#1E293B',
+  headerTitleStyle: { fontWeight: '700', fontSize: 17 },
+};
 
 export default function App() {
   return (
     <NavigationContainer>
-      <Stack.Navigator initialRouteName="Login">
-        <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
-        <Stack.Screen name="Dashboard" component={DashboardScreen} />
-        <Stack.Screen name="Transfer" component={TransferScreen} />
+      <Stack.Navigator initialRouteName="Login" screenOptions={headerStyle}>
+        <Stack.Screen name="Login"         component={LoginScreen}         options={{ headerShown: false }} />
+        <Stack.Screen name="Dashboard"     component={DashboardScreen}     options={{ title: 'CampusFlow' }} />
+        <Stack.Screen name="Transfer"      component={TransferScreen}      options={{ title: 'Send Money' }} />
         <Stack.Screen name="VendorPayment" component={VendorPaymentScreen} options={{ title: 'Pay Vendor' }} />
-        <Stack.Screen name="Transactions" component={TransactionsScreen} />
+        <Stack.Screen name="Transactions"  component={TransactionsScreen}  options={{ title: 'Transactions' }} />
+        <Stack.Screen name="Fines"         component={FinesScreen}         options={{ title: 'Fines & Dues' }} />
+        <Stack.Screen name="Subscriptions" component={SubscriptionsScreen} options={{ title: 'Subscriptions' }} />
       </Stack.Navigator>
     </NavigationContainer>
   );

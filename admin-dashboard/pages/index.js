@@ -87,7 +87,7 @@ export default function Overview() {
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
           <thead>
             <tr style={{ background: "#f8fafc" }}>
-              {["ID", "Type", "Amount", "Sender", "Status", "Time"].map(h => (
+              {["ID", "Type", "Amount", "Sender → Receiver", "Status", "Time"].map(h => (
                 <th key={h} style={{
                   padding: "9px 16px", textAlign: "left", color: "#64748b",
                   fontWeight: 600, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em"
@@ -111,7 +111,9 @@ export default function Overview() {
                     <span style={{ background: badge.bg, color: badge.color, borderRadius: 5, padding: "2px 8px", fontSize: 11, fontWeight: 600 }}>{t.type}</span>
                   </td>
                   <td style={{ padding: "11px 16px", color: "#0f172a", fontWeight: 600 }}>₹{(t.amount || 0).toFixed(0)}</td>
-                  <td style={{ padding: "11px 16px", color: "#64748b", fontFamily: "monospace", fontSize: 12 }}>{shortId(t.sender_id)}</td>
+                  <td style={{ padding: "11px 16px", color: "#0f172a", fontSize: 13, fontWeight: 500 }}>
+                    <span style={{ color: "#64748b" }}>{t.sender_name || "System"}</span> → {t.receiver_name || "System"}
+                  </td>
                   <td style={{ padding: "11px 16px" }}>
                     <span style={{
                       background: t.status === "COMPLETED" ? "#d1fae5" : "#fef3c7",

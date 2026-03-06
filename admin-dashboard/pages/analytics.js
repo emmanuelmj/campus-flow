@@ -3,12 +3,12 @@ import { useRouter } from "next/router";
 import { getTransactions } from "../services/api";
 
 const TYPE_BADGE = {
-  P2P:            { bg: "#dbeafe", color: "#1d4ed8" },
+  P2P: { bg: "#dbeafe", color: "#1d4ed8" },
   VENDOR_PAYMENT: { bg: "#fef3c7", color: "#b45309" },
-  TOP_UP:         { bg: "#d1fae5", color: "#065f46" },
-  FINE:           { bg: "#fee2e2", color: "#991b1b" },
-  SUB:            { bg: "#ede9fe", color: "#5b21b6" },
-  FEE:            { bg: "#f1f5f9", color: "#475569" },
+  TOP_UP: { bg: "#d1fae5", color: "#065f46" },
+  FINE: { bg: "#fee2e2", color: "#991b1b" },
+  SUB: { bg: "#ede9fe", color: "#5b21b6" },
+  FEE: { bg: "#f1f5f9", color: "#475569" },
 };
 
 const ALL_TYPES = ["ALL", "P2P", "TOP_UP", "VENDOR_PAYMENT", "FINE", "SUB", "FEE"];
@@ -18,6 +18,7 @@ export default function Analytics() {
   const [txns, setTxns] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("ALL");
+  const [selectedTxn, setSelectedTxn] = useState(null);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -88,7 +89,8 @@ export default function Analytics() {
                 const badge = TYPE_BADGE[t.type] || { bg: "#f1f5f9", color: "#475569" };
                 const shortId = id => id ? String(id).slice(0, 10) + "..." : "—";
                 return (
-                  <tr key={i} style={{ borderTop: "1px solid #f8fafc" }}
+                  <tr key={i} style={{ borderTop: "1px solid #f8fafc", cursor: "pointer" }}
+                    onClick={() => setSelectedTxn(t)}
                     onMouseEnter={e => e.currentTarget.style.background = "#fafafa"}
                     onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
                     <td style={{ padding: "11px 16px", color: "#94a3b8", fontFamily: "monospace", fontSize: 11 }}>{shortId(t.transaction_id)}</td>
@@ -96,8 +98,8 @@ export default function Analytics() {
                       <span style={{ background: badge.bg, color: badge.color, borderRadius: 5, padding: "2px 8px", fontSize: 11, fontWeight: 600 }}>{t.type}</span>
                     </td>
                     <td style={{ padding: "11px 16px", fontWeight: 600, color: "#0f172a" }}>₹{(t.amount || 0).toFixed(0)}</td>
-                    <td style={{ padding: "11px 16px", color: "#64748b", fontFamily: "monospace", fontSize: 11 }}>{shortId(t.sender_id)}</td>
-                    <td style={{ padding: "11px 16px", color: "#64748b", fontFamily: "monospace", fontSize: 11 }}>{shortId(t.receiver_id)}</td>
+                    <td style={{ padding: "11px 16px", color: "#0f172a", fontSize: 12 }}>{t.sender_name || "System"}</td>
+                    <td style={{ padding: "11px 16px", color: "#0f172a", fontSize: 12 }}>{t.receiver_name || "System"}</td>
                     <td style={{ padding: "11px 16px" }}>
                       <span style={{ background: t.status === "COMPLETED" ? "#d1fae5" : "#fef3c7", color: t.status === "COMPLETED" ? "#065f46" : "#92400e", borderRadius: 5, padding: "2px 8px", fontSize: 11, fontWeight: 600 }}>{t.status}</span>
                     </td>
@@ -111,6 +113,100 @@ export default function Analytics() {
           </table>
         )}
       </div>
+
+      {selectedTxn && (
+        <div style={{
+          position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+          background: "rgba(15, 23, 42, 0.4)", display: "flex", alignItems: "center",
+          justifyContent: "center", zIndex: 100
+        }}>
+          <div style={{
+            background: "#fff", borderRadius: 16, width: "100%", maxWidth: 500,
+            padding: "24px", boxShadow: "0 10px 25px rgba(0,0,0,0.1)",
+            position: "relative"
+          }}>
+            <button onClick={() => setSelectedTxn(null)} style={{
+              position: "absolute", top: 16, right: 16, background: "none",
+              border: "none", fontSize: 20, cursor: "pointer", color: "#64748b"
+            }}>×</button>
+
+            <h2 style={{ fontSize: 20, fontWeight: 700, margin: "0 0 20px 0", color: "#0f172a" }}>Transaction Details</h2>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid #f1f5f9", paddingBottom: 12 }}>
+                <span style={{ color: "#64748b", fontSize: 13, fontWeight: 500 }}>Transaction ID</span>
+                <span style={{ color: "#0f172a", fontFamily: "monospace", fontSize: 13 }}>{selectedTxn.transaction_id}</span>
+              </div>
+
+              <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid #f1f5f9", paddingBottom: 12 }}>
+                <span style={{ color: "#64748b", fontSize: 13, fontWeight: 500 }}>Type</span>
+                <span style={{
+                  background: (TYPE_BADGE[selectedTxn.type] || {}).bg || "#f1f5f9",
+                  color: (TYPE_BADGE[selectedTxn.type] || {}).color || "#475569",
+                  borderRadius: 5, padding: "2px 8px", fontSize: 12, fontWeight: 600
+                }}>{selectedTxn.type}</span>
+              </div>
+
+              <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid #f1f5f9", paddingBottom: 12 }}>
+                <span style={{ color: "#64748b", fontSize: 13, fontWeight: 500 }}>Amount</span>
+                <span style={{ color: "#0f172a", fontWeight: 700, fontSize: 16 }}>₹{(selectedTxn.amount || 0).toFixed(2)}</span>
+              </div>
+
+              <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid #f1f5f9", paddingBottom: 12 }}>
+                <span style={{ color: "#64748b", fontSize: 13, fontWeight: 500 }}>Sender</span>
+                <div style={{ textAlign: "right" }}>
+                  <div style={{ color: "#0f172a", fontWeight: 500, fontSize: 13 }}>{selectedTxn.sender_name || "System"}</div>
+                  <div style={{ color: "#94a3b8", fontFamily: "monospace", fontSize: 11 }}>{selectedTxn.sender_id || "—"}</div>
+                </div>
+              </div>
+
+              <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid #f1f5f9", paddingBottom: 12 }}>
+                <span style={{ color: "#64748b", fontSize: 13, fontWeight: 500 }}>Receiver</span>
+                <div style={{ textAlign: "right" }}>
+                  <div style={{ color: "#0f172a", fontWeight: 500, fontSize: 13 }}>{selectedTxn.receiver_name || "System"}</div>
+                  <div style={{ color: "#94a3b8", fontFamily: "monospace", fontSize: 11 }}>{selectedTxn.receiver_id || "—"}</div>
+                </div>
+              </div>
+
+              <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid #f1f5f9", paddingBottom: 12 }}>
+                <span style={{ color: "#64748b", fontSize: 13, fontWeight: 500 }}>Date & Time</span>
+                <span style={{ color: "#0f172a", fontSize: 13 }}>
+                  {selectedTxn.timestamp ? new Date(selectedTxn.timestamp).toLocaleString() : "—"}
+                </span>
+              </div>
+
+              <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid #f1f5f9", paddingBottom: 12 }}>
+                <span style={{ color: "#64748b", fontSize: 13, fontWeight: 500 }}>Status</span>
+                <span style={{
+                  background: selectedTxn.status === "COMPLETED" ? "#d1fae5" : "#fef3c7",
+                  color: selectedTxn.status === "COMPLETED" ? "#065f46" : "#92400e",
+                  borderRadius: 5, padding: "2px 8px", fontSize: 12, fontWeight: 600
+                }}>{selectedTxn.status}</span>
+              </div>
+
+              {selectedTxn.description && (
+                <div style={{ display: "flex", justifyContent: "space-between", paddingBottom: 4 }}>
+                  <span style={{ color: "#64748b", fontSize: 13, fontWeight: 500 }}>Note / Reason</span>
+                  <span style={{ color: "#0f172a", fontSize: 13, maxWidth: "60%", textAlign: "right", wordBreak: "break-word" }}>
+                    {selectedTxn.description}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            <div style={{ marginTop: 24, textAlign: "right" }}>
+              <button
+                onClick={() => setSelectedTxn(null)}
+                style={{
+                  padding: "10px 20px", background: "#f1f5f9", color: "#475569",
+                  border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13
+                }}>
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

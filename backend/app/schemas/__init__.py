@@ -70,6 +70,10 @@ class AdminUserCreate(BaseModel):
     vendor_code: Optional[str] = None   # required when role=VENDOR
     business_name: Optional[str] = None # required when role=VENDOR
 
+from typing import List
+class BulkUserCreate(BaseModel):
+    users: List[AdminUserCreate]
+
 class ManualDeductRequest(BaseModel):
     user_identifier: str   # email, student_id, or name
     amount: float

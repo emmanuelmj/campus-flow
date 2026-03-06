@@ -1,5 +1,10 @@
-SCHEMA_PATH = "C:/Users/Aditya/OneDrive/Desktop/CF/campus-flow/backend/app/schemas/__init__.py"
-ADMIN_PATH  = "C:/Users/Aditya/OneDrive/Desktop/CF/campus-flow/backend/app/routers/admin.py"
+import os
+
+# Get the base directory of the project
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+SCHEMA_PATH = os.path.join(BASE_DIR, "backend", "app", "schemas", "__init__.py")
+ADMIN_PATH  = os.path.join(BASE_DIR, "backend", "app", "routers", "admin.py")
 
 schema_addition = """
 class AdminSubscriptionCreate(BaseModel):

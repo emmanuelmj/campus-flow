@@ -65,11 +65,37 @@ def get_transactions(
         .all()
     )
     results = []
+    
+    # Pre-fetch all user info that might be related to these transactions to resolve names
+    user_ids = set()
     for t in txns:
+        if t.sender_id: user_ids.add(t.sender_id)
+        if t.receiver_id: user_ids.add(t.receiver_id)
+        
+    users = db.query(models.User).filter(models.User.id.in_(user_ids)).all()
+    user_map = {u.id: u.name for u in users}
+
+    # Pre-fetch vendor info for vendor payments
+    vendors = db.query(models.Vendor).all()
+    vendor_map = {v.user_id: v.vendor_name for v in vendors}
+
+    for t in txns:
+        is_sender = str(t.sender_id) == uid
+        
+        # Determine the name of the 'other' entity
+        entity_name = t.type
+        if t.type == 'P2P':
+            other_id = t.receiver_id if is_sender else t.sender_id
+            entity_name = user_map.get(other_id, "Unknown Student")
+        elif t.type == 'VENDOR_PAYMENT':
+            other_id = t.receiver_id if is_sender else t.sender_id
+            entity_name = vendor_map.get(other_id, "Unknown Vendor")
+            
         results.append({
             "transaction_id": f"txn-{t.id}",
             "type": t.type,
-            "amount": -t.amount if str(t.sender_id) == uid else t.amount,
+            "entity_name": entity_name,
+            "amount": -t.amount if is_sender else t.amount,
             "sender_id": str(t.sender_id),
             "receiver_id": str(t.receiver_id) if t.receiver_id else None,
             "timestamp": t.timestamp.isoformat() if t.timestamp else None,
@@ -171,6 +197,16 @@ def pay_vendor(
         "transaction_id": f"txn-{txn.id}",
         "new_balance": student.wallet_balance,
     }
+
+
+@router.get("/vendors")
+def list_vendors(
+    current_user: dict = Depends(require_student),
+    db: Session = Depends(database.get_db),
+):
+    """Allow students to fetch a list of active vendors for payment."""
+    vendors = db.query(models.Vendor).all()
+    return [{"vendor_id": v.vendor_code, "business_name": v.vendor_name} for v in vendors]
 
 
 # ─── Subscriptions ─────────────────────────────────────────────────────────────

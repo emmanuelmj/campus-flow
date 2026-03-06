@@ -1,19 +1,53 @@
-const API_URL = 'http://localhost:8000'; // Change to network IP when testing on physical device
+import { Platform } from 'react-native';
 
-export const loginUser = async (email, password) => {
-    // Stub implementation
-    return { token: 'mock-token', role: 'STUDENT' };
+// 10.0.2.2 maps to host's localhost on Android emulator
+// For physical device: replace with your machine's LAN IP (e.g., 192.168.1.x:8000)
+export const API_URL =
+  Platform.OS === 'android' ? 'http://10.0.2.2:8000' : 'http://localhost:8000';
+
+let authToken = null;
+
+export const setToken = (token) => { authToken = token; };
+export const getToken = () => authToken;
+export const clearToken = () => { authToken = null; };
+
+const request = async (endpoint, method = 'GET', body = null) => {
+  const headers = { 'Content-Type': 'application/json' };
+  if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+
+  const res = await fetch(`${API_URL}${endpoint}`, {
+    method,
+    headers,
+    body: body ? JSON.stringify(body) : null,
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || err.message || `HTTP ${res.status}`);
+  }
+  return res.json();
 };
 
-export const fetchWallet = async () => {
-    try {
-        const response = await fetch(`${API_URL}/wallet`);
-        return await response.json();
-    } catch (e) {
-        return { balance: 1250.50 }; // mock fallback
-    }
-};
+// Auth
+export const loginUser = (email, password) =>
+  request('/auth/login', 'POST', { email, password });
 
-export const payVendor = async (vendorId, amount) => {
-    return { status: 'SUCCESS' };
-};
+// Student wallet & transactions
+export const fetchWallet = () => request('/wallet');
+export const fetchTransactions = () => request('/transactions');
+
+// Payments
+export const transferFunds = (recipient_identifier, amount, note = 'App transfer') =>
+  request('/transfer', 'POST', { recipient_identifier, amount, note });
+
+// vendor_id field is the vendor_code string
+export const payVendor = (vendor_id, amount) =>
+  request('/pay-vendor', 'POST', { vendor_id, amount });
+
+// Fines
+export const fetchFines = () => request('/student/fines');
+export const payFine = (fine_id) => request(`/student/pay-fine/${fine_id}`, 'POST');
+
+// Subscriptions
+export const subscribe = (service_id) =>
+  request('/subscribe', 'POST', { service_id, auto_renew: true });

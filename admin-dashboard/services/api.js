@@ -123,6 +123,15 @@ export async function createUser(data) {
   }));
 }
 
+export async function bulkCreateUsers(data) {
+  if (MOCK_MODE) {
+    return { status: 'SUCCESS', message: `Mock imported ${data.users.length} users.` };
+  }
+  return handle(await fetch(`${API_URL}/admin/bulk-create-users`, {
+    method: 'POST', headers: authHeaders(), body: JSON.stringify(data),
+  }));
+}
+
 export async function manualDeduct(data) {
   if (MOCK_MODE) {
     const user = MOCK_USERS.find(u => u.email === data.user_identifier || u.student_id === data.user_identifier || u.name === data.user_identifier);
