@@ -5,6 +5,7 @@ from app import database, models, schemas
 from app.utils.security import require_student
 from datetime import datetime, timedelta
 from uuid import UUID
+from typing import List
 
 router = APIRouter(tags=["student"])
 
@@ -369,3 +370,160 @@ def pay_fine(
         "message": "Fine paid successfully",
         "new_balance": student.wallet_balance,
     }
+
+
+# ─── Canteen ───────────────────────────────────────────────────────────────────
+
+@router.get("/canteens", response_model=List[dict])
+def list_available_canteens(
+    current_user: dict = Depends(require_student),
+    db: Session = Depends(database.get_db),
+):
+    # Canteens are vendors who have at least one menu item or are categorized as such
+    # For now, let's just list all vendors
+    vendors = db.query(models.Vendor).all()
+    return [{"vendor_id": str(v.user_id), "vendor_code": v.vendor_code, "vendor_name": v.vendor_name} for v in vendors]
+
+
+@router.get("/canteens/{vendor_id}/menu", response_model=List[schemas.MenuItemResponse])
+def get_canteen_menu(
+    vendor_id: UUID,
+    current_user: dict = Depends(require_student),
+    db: Session = Depends(database.get_db),
+):
+    return db.query(models.MenuItem).filter(
+        models.MenuItem.vendor_id == vendor_id,
+        models.MenuItem.is_available == True
+    ).all()
+
+
+@router.post("/orders", response_model=schemas.CanteenOrderResponse)
+def place_canteen_order(
+    req: schemas.CanteenOrderCreate,
+    current_user: dict = Depends(require_student),
+    db: Session = Depends(database.get_db),
+):
+    student = db.query(models.User).filter(models.User.id == current_user["user_id"]).first()
+    
+    # Calculate total and check availability
+    total_amount = 0.0
+    order_items = []
+    
+    for item_req in req.items:
+        menu_item = db.query(models.MenuItem).filter(models.MenuItem.id == item_req.menu_item_id).first()
+        if not menu_item or not menu_item.is_available:
+            raise HTTPException(status_code=400, detail=f"Item {item_req.menu_item_id} not available")
+        
+        item_total = menu_item.price * item_req.quantity
+        total_amount += item_total
+        
+        order_items.append(models.CanteenOrderItem(
+            menu_item_id=menu_item.id,
+            quantity=item_req.quantity,
+            price_at_order=menu_item.price
+        ))
+
+    if student.wallet_balance < total_amount:
+        raise HTTPException(status_code=400, detail="Insufficient balance")
+
+    # Deduct balance
+    student.wallet_balance -= total_amount
+    
+    # Create order
+    order = models.CanteenOrder(
+        student_id=student.id,
+        vendor_id=req.vendor_id,
+        total_amount=total_amount,
+        status="PENDING",
+        items=order_items
+    )
+    
+    # Create transaction record
+    txn = models.Transaction(
+        sender_id=student.id,
+        receiver_id=req.vendor_id,
+        amount=total_amount,
+        type="CANTEEN_PURCHASE",
+        status="COMPLETED",
+    )
+    
+    db.add(order)
+    db.add(txn)
+    db.commit()
+    db.refresh(order)
+    return order
+
+
+@router.get("/orders", response_model=List[schemas.CanteenOrderResponse])
+def get_my_orders(
+    current_user: dict = Depends(require_student),
+    db: Session = Depends(database.get_db),
+):
+    return (
+        db.query(models.CanteenOrder)
+        .filter(models.CanteenOrder.student_id == current_user["user_id"])
+        .order_by(models.CanteenOrder.created_at.desc())
+        .all()
+    )
+
+
+# ─── Library ───────────────────────────────────────────────────────────────────
+
+@router.get("/library/books", response_model=List[schemas.BookResponse])
+def list_books(
+    current_user: dict = Depends(require_student),
+    db: Session = Depends(database.get_db),
+):
+    return db.query(models.Book).filter(models.Book.available_copies > 0).all()
+
+
+@router.post("/library/rent", response_model=schemas.BookRentalResponse)
+def rent_book(
+    req: schemas.BookRentalCreate,
+    current_user: dict = Depends(require_student),
+    db: Session = Depends(database.get_db),
+):
+    student = db.query(models.User).filter(models.User.id == current_user["user_id"]).first()
+    book = db.query(models.Book).filter(models.Book.id == req.book_id).first()
+    
+    if not book or book.available_copies <= 0:
+        raise HTTPException(status_code=400, detail="Book not available")
+
+    # Check if already rented
+    active_rental = db.query(models.BookRental).filter(
+        models.BookRental.book_id == book.id,
+        models.BookRental.student_id == student.id,
+        models.BookRental.status == "RENTED"
+    ).first()
+    if active_rental:
+        raise HTTPException(status_code=400, detail="You already have this book rented")
+
+    # Default due date 14 days from now
+    due_date = datetime.utcnow() + timedelta(days=14)
+    
+    rental = models.BookRental(
+        book_id=book.id,
+        student_id=student.id,
+        due_date=due_date,
+        status="RENTED"
+    )
+    
+    book.available_copies -= 1
+    
+    db.add(rental)
+    db.commit()
+    db.refresh(rental)
+    return rental
+
+
+@router.get("/library/rentals", response_model=List[schemas.BookRentalResponse])
+def get_my_rentals(
+    current_user: dict = Depends(require_student),
+    db: Session = Depends(database.get_db),
+):
+    return (
+        db.query(models.BookRental)
+        .filter(models.BookRental.student_id == current_user["user_id"])
+        .order_by(models.BookRental.rented_at.desc())
+        .all()
+    )

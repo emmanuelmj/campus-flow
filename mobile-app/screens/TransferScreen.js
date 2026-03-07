@@ -6,10 +6,10 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { transferFunds } from '../services/api';
 
-export default function TransferScreen({ navigation }) {
-  const [recipient, setRecipient] = useState('');
-  const [amount, setAmount]       = useState('');
-  const [loading, setLoading]     = useState(false);
+export default function TransferScreen({ navigation, route }) {
+  const [recipient, setRecipient] = useState(route.params?.initialTarget || '');
+  const [amount, setAmount] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const handleSend = async () => {
     const num = parseFloat(amount);

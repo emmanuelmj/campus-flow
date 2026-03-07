@@ -6,10 +6,10 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { payVendor } from '../services/api';
 
-export default function VendorPaymentScreen({ navigation }) {
-  const [vendorCode, setVendorCode] = useState('');
-  const [amount, setAmount]         = useState('');
-  const [loading, setLoading]       = useState(false);
+export default function VendorPaymentScreen({ navigation, route }) {
+  const [vendorCode, setVendorCode] = useState(route.params?.initialTarget || '');
+  const [amount, setAmount] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const handlePay = async () => {
     const num = parseFloat(amount);

@@ -225,3 +225,33 @@ export async function cancelSubscription(subId) {
   const id = subId.replace('sub-', '');
   return handle(await fetch(`${API_URL}/admin/subscriptions/${id}/cancel`, { method: 'POST', headers: authHeaders() }));
 }
+
+// ─── Library Management ───────────────────────────────────────────────────────
+
+export async function getBooks() {
+  return handle(await fetch(`${API_URL}/admin/library/books`, { headers: authHeaders() }));
+}
+
+export async function addBook(data) {
+  return handle(await fetch(`${API_URL}/admin/library/books`, {
+    method: 'POST', headers: authHeaders(), body: JSON.stringify(data),
+  }));
+}
+
+export async function updateBook(id, data) {
+  return handle(await fetch(`${API_URL}/admin/library/books/${id}`, {
+    method: 'PUT', headers: authHeaders(), body: JSON.stringify(data),
+  }));
+}
+
+export async function deleteBook(id) {
+  return handle(await fetch(`${API_URL}/admin/library/books/${id}`, {
+    method: 'DELETE', headers: authHeaders(),
+  }));
+}
+
+export async function processReturn(rentalId) {
+  return handle(await fetch(`${API_URL}/admin/library/rentals/${rentalId}/return`, {
+    method: 'POST', headers: authHeaders(),
+  }));
+}

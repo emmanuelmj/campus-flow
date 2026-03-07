@@ -4,6 +4,7 @@ from sqlalchemy import or_
 from app import database, models, schemas
 from app.utils.security import require_admin, get_password_hash
 from uuid import UUID
+from typing import List
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -697,3 +698,85 @@ def cancel_subscription(
     sub.is_active = False
     db.commit()
     return {"status": "SUCCESS", "message": "Subscription cancelled"}
+
+
+# ─── Library Management ───────────────────────────────────────────────────────
+
+@router.post("/library/books", response_model=schemas.BookResponse)
+def add_book(
+    book: schemas.BookCreate,
+    current_user: dict = Depends(require_admin),
+    db: Session = Depends(database.get_db),
+):
+    db_book = models.Book(**book.model_dump())
+    db.add(db_book)
+    db.commit()
+    db.refresh(db_book)
+    return db_book
+
+
+@router.get("/library/books", response_model=List[schemas.BookResponse])
+def admin_list_books(
+    current_user: dict = Depends(require_admin),
+    db: Session = Depends(database.get_db),
+):
+    return db.query(models.Book).all()
+
+
+@router.put("/library/books/{book_id}", response_model=schemas.BookResponse)
+def update_book(
+    book_id: UUID,
+    book: schemas.BookCreate, # Reuse Create for Update for now
+    current_user: dict = Depends(require_admin),
+    db: Session = Depends(database.get_db),
+):
+    db_book = db.query(models.Book).filter(models.Book.id == book_id).first()
+    if not db_book:
+        raise HTTPException(status_code=404, detail="Book not found")
+    
+    for key, value in book.model_dump().items():
+        setattr(db_book, key, value)
+    
+    db.commit()
+    db.refresh(db_book)
+    return db_book
+
+
+@router.delete("/library/books/{book_id}")
+def delete_book(
+    book_id: UUID,
+    current_user: dict = Depends(require_admin),
+    db: Session = Depends(database.get_db),
+):
+    db_book = db.query(models.Book).filter(models.Book.id == book_id).first()
+    if not db_book:
+        raise HTTPException(status_code=404, detail="Book not found")
+    
+    db.delete(db_book)
+    db.commit()
+    return {"status": "SUCCESS", "message": "Book deleted"}
+
+
+@router.post("/library/rentals/{rental_id}/return", response_model=schemas.BookRentalResponse)
+def process_book_return(
+    rental_id: UUID,
+    current_user: dict = Depends(require_admin),
+    db: Session = Depends(database.get_db),
+):
+    from datetime import datetime as dt
+    rental = db.query(models.BookRental).filter(models.BookRental.id == rental_id).first()
+    if not rental:
+        raise HTTPException(status_code=404, detail="Rental not found")
+    if rental.status == "RETURNED":
+        raise HTTPException(status_code=400, detail="Book already returned")
+
+    rental.status = "RETURNED"
+    rental.returned_at = dt.utcnow()
+    
+    book = db.query(models.Book).filter(models.Book.id == rental.book_id).first()
+    if book:
+        book.available_copies += 1
+    
+    db.commit()
+    db.refresh(rental)
+    return rental

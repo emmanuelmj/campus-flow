@@ -44,6 +44,11 @@ export const transferFunds = (recipient_identifier, amount, note = 'App transfer
 export const payVendor = (vendor_id, amount) =>
   request('/pay-vendor', 'POST', { vendor_id, amount });
 
+// Payment Requests (from vendors)
+export const fetchPaymentRequests = () => request('/student/payment-requests');
+export const approvePaymentRequest = (request_id) =>
+  request(`/student/approve-payment/${request_id}`, 'POST');
+
 // Fines
 export const fetchFines = () => request('/student/fines');
 export const payFine = (fine_id) => request(`/student/pay-fine/${fine_id}`, 'POST');
@@ -51,3 +56,13 @@ export const payFine = (fine_id) => request(`/student/pay-fine/${fine_id}`, 'POS
 // Subscriptions
 export const subscribe = (service_id) =>
   request('/subscribe', 'POST', { service_id, auto_renew: true });
+
+// Canteen
+export const fetchCanteens = () => request('/canteens');
+export const fetchCanteenMenu = (vendor_id) => request(`/canteens/${vendor_id}/menu`);
+export const placeCanteenOrder = (vendor_id, items) =>
+  request('/orders', 'POST', { vendor_id, items });
+
+// Library
+export const fetchBooks = () => request('/library/books');
+export const rentBook = (book_id) => request('/library/rent', 'POST', { book_id });

@@ -88,3 +88,39 @@ export async function getVendorDeductRequests() {
   if (MOCK_MODE) return MOCK_VENDOR_DEDUCT_REQUESTS;
   return handle(await fetch(`${API_URL}/vendor/deduct-requests`, { headers: authHeaders() }));
 }
+
+// ─── Canteen Menu ─────────────────────────────────────────────────────────────
+
+export async function getMenu() {
+  return handle(await fetch(`${API_URL}/vendor/menu`, { headers: authHeaders() }));
+}
+
+export async function createMenuItem(data) {
+  return handle(await fetch(`${API_URL}/vendor/menu`, {
+    method: 'POST', headers: authHeaders(), body: JSON.stringify(data),
+  }));
+}
+
+export async function updateMenuItem(id, data) {
+  return handle(await fetch(`${API_URL}/vendor/menu/${id}`, {
+    method: 'PUT', headers: authHeaders(), body: JSON.stringify(data),
+  }));
+}
+
+export async function deleteMenuItem(id) {
+  return handle(await fetch(`${API_URL}/vendor/menu/${id}`, {
+    method: 'DELETE', headers: authHeaders(),
+  }));
+}
+
+// ─── Canteen Orders ───────────────────────────────────────────────────────────
+
+export async function getVendorOrders() {
+  return handle(await fetch(`${API_URL}/vendor/orders`, { headers: authHeaders() }));
+}
+
+export async function updateOrderStatus(id, status) {
+  return handle(await fetch(`${API_URL}/vendor/orders/${id}/status?status=${status}`, {
+    method: 'PATCH', headers: authHeaders(),
+  }));
+}

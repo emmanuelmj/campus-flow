@@ -1,6 +1,7 @@
 from pydantic import BaseModel, ConfigDict
-from typing import Optional
+from typing import Optional, List
 from uuid import UUID
+from datetime import datetime
 
 # ─── Auth ──────────────────────────────────────────────────────────────────────
 
@@ -97,3 +98,87 @@ class AdminSubscriptionCreate(BaseModel):
     billing_cycle:      str            # WEEKLY, MONTHLY, SEMESTER
     vendor_code:        Optional[str] = None
     immediate_charge:   bool = True    # deduct first billing immediately
+
+
+# ─── New Canteen ───────────────────────────────────────────────────────────────
+
+class MenuItemBase(BaseModel):
+    name: str
+    description: Optional[str] = None
+    price: float
+    category: Optional[str] = None
+    is_available: bool = True
+    image_url: Optional[str] = None
+
+class MenuItemCreate(MenuItemBase):
+    pass
+
+class MenuItemUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    price: Optional[float] = None
+    category: Optional[str] = None
+    is_available: Optional[bool] = None
+    image_url: Optional[str] = None
+
+class MenuItemResponse(MenuItemBase):
+    id: UUID
+    vendor_id: UUID
+    created_at: datetime
+    model_config = ConfigDict(from_attributes=True)
+
+class CanteenOrderItemCreate(BaseModel):
+    menu_item_id: UUID
+    quantity: float
+
+class CanteenOrderCreate(BaseModel):
+    vendor_id: UUID
+    items: List[CanteenOrderItemCreate]
+
+class CanteenOrderItemResponse(BaseModel):
+    menu_item: MenuItemResponse
+    quantity: float
+    price_at_order: float
+    model_config = ConfigDict(from_attributes=True)
+
+class CanteenOrderResponse(BaseModel):
+    id: UUID
+    student_id: UUID
+    vendor_id: UUID
+    total_amount: float
+    status: str
+    created_at: datetime
+    items: List[CanteenOrderItemResponse]
+    model_config = ConfigDict(from_attributes=True)
+
+
+# ─── New Library ───────────────────────────────────────────────────────────────
+
+class BookBase(BaseModel):
+    title: str
+    author: str
+    isbn: Optional[str] = None
+    category: Optional[str] = None
+    total_copies: float
+    available_copies: float
+    image_url: Optional[str] = None
+
+class BookCreate(BookBase):
+    pass
+
+class BookResponse(BookBase):
+    id: UUID
+    model_config = ConfigDict(from_attributes=True)
+
+class BookRentalCreate(BaseModel):
+    book_id: UUID
+    student_email: Optional[str] = None # For admin to rent for student
+
+class BookRentalResponse(BaseModel):
+    id: UUID
+    book: BookResponse
+    rented_at: datetime
+    due_date: datetime
+    returned_at: Optional[datetime] = None
+    status: str
+    model_config = ConfigDict(from_attributes=True)

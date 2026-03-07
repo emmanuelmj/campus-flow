@@ -3,7 +3,7 @@ import {
     Wallet, Send, Store, ChevronLeft, ArrowUpRight, ArrowDownLeft,
     AlertCircle, CheckCircle2, Receipt, CalendarDays, User, Sparkles,
     X, Copy, Check, Zap, ArrowRight, CreditCard, Building, RefreshCw,
-    QrCode, Scan, LogOut
+    QrCode, Scan, LogOut, Utensils, BookOpen, Library
 } from 'lucide-react';
 import { QRCodeCanvas } from 'qrcode.react';
 import { Html5QrcodeScanner } from 'html5-qrcode';
@@ -307,6 +307,8 @@ export default function App() {
             { screen: 'VendorPayment', icon: <Store size={20} />, label: 'Pay Vendor', iconBg: 'bg-emerald-50', iconFg: 'text-emerald-600', hover: 'hover:border-emerald-100' },
             { screen: 'Fines', icon: <Receipt size={20} />, label: 'Fines', iconBg: 'bg-rose-50', iconFg: 'text-rose-600', hover: 'hover:border-rose-100' },
             { screen: 'Subscriptions', icon: <CalendarDays size={20} />, label: 'Subscriptions', iconBg: 'bg-amber-50', iconFg: 'text-amber-600', hover: 'hover:border-amber-100' },
+            { screen: 'Canteen', icon: <Utensils size={20} />, label: 'Canteen', iconBg: 'bg-orange-50', iconFg: 'text-orange-600', hover: 'hover:border-orange-100' },
+            { screen: 'Library', icon: <Library size={20} />, label: 'Library', iconBg: 'bg-indigo-50', iconFg: 'text-indigo-600', hover: 'hover:border-indigo-100' },
         ];
 
         const unpaidFines = fines.filter(f => f.status === 'UNPAID').length;
@@ -913,6 +915,172 @@ export default function App() {
         case 'Transactions': return <HistoryScreen />;
         case 'Fines': return <FinesScreen />;
         case 'Subscriptions': return <SubscriptionsScreen />;
+        case 'Canteen': return <CanteenScreen MobileWrapper={MobileWrapper} navigate={navigate} balance={balance} refreshWallet={refreshWallet} />;
+        case 'Library': return <LibraryScreen MobileWrapper={MobileWrapper} navigate={navigate} />;
         default: return <LoginScreen />;
     }
 }
+
+// ── NEW SCREENS ─────────────────────────────────────────────────────────────
+
+const CanteenScreen = ({ MobileWrapper, navigate, balance, refreshWallet }) => {
+    const [canteens, setCanteens] = useState([]);
+    const [selected, setSelected] = useState(null);
+    const [menu, setMenu] = useState([]);
+    const [cart, setCart] = useState({});
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const load = async () => {
+            try {
+                const data = await apiRequest('/canteens');
+                setCanteens(data || []);
+            } catch (e) { console.error(e); }
+            setLoading(false);
+        };
+        load();
+    }, []);
+
+    const openMenu = async (c) => {
+        setSelected(c);
+        setLoading(true);
+        try {
+            const data = await apiRequest(`/canteens/${c.vendor_id}/menu`);
+            setMenu(data || []);
+        } catch (e) { console.error(e); }
+        setLoading(false);
+    };
+
+    const addToCart = (i) => setCart(p => ({ ...p, [i.id]: (p[i.id] || 0) + 1 }));
+    const subFromCart = (i) => setCart(p => {
+        const n = { ...p };
+        if (n[i.id] > 1) n[i.id]--; else delete n[i.id];
+        return n;
+    });
+
+    const total = Object.entries(cart).reduce((s, [id, q]) => s + (menu.find(m => m.id === id)?.price || 0) * q, 0);
+
+    const handleOrder = async () => {
+        if (total > balance) return alert('Insufficient balance');
+        try {
+            const items = Object.entries(cart).map(([id, q]) => ({ menu_item_id: id, quantity: q }));
+            await apiRequest('/orders', 'POST', { vendor_id: selected.vendor_id, items });
+            alert('Order placed!');
+            refreshWallet();
+            navigate('Dashboard');
+        } catch (e) { alert(e.message); }
+    };
+
+    if (selected) {
+        return (
+            <MobileWrapper title={selected.vendor_name} showBack>
+                <div className="px-6 space-y-4 pt-2">
+                    <button onClick={() => setSelected(null)} className="text-xs font-bold text-slate-400 mb-2 flex items-center gap-1"><ChevronLeft size={14} /> Back to Canteens</button>
+                    {loading ? <div className="text-center py-10">Loading menu...</div> : menu.map(m => (
+                        <div key={m.id} className="bg-white p-4 rounded-2xl border border-slate-100 flex justify-between items-center">
+                            <div>
+                                <h4 className="font-bold text-slate-800">{m.name}</h4>
+                                <p className="text-xs text-slate-500 font-medium">₹{m.price}</p>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                {cart[m.id] ? (
+                                    <>
+                                        <button onClick={() => subFromCart(m)} className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center font-bold text-slate-600">-</button>
+                                        <span className="font-bold text-sm">{cart[m.id]}</span>
+                                        <button onClick={() => addToCart(m)} className="w-8 h-8 rounded-lg bg-orange-600 text-white flex items-center justify-center font-bold">+</button>
+                                    </>
+                                ) : (
+                                    <button onClick={() => addToCart(m)} className="px-5 py-2 rounded-xl bg-orange-600 text-white text-xs font-bold">Add</button>
+                                )}
+                            </div>
+                        </div>
+                    ))}
+                    {total > 0 && (
+                        <div className="fixed bottom-10 left-1/2 -translate-x-1/2 w-[340px] bg-slate-900 text-white p-4 rounded-[24px] flex justify-between items-center shadow-2xl z-50">
+                            <div>
+                                <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Total Amount</p>
+                                <p className="font-bold text-lg">₹{total.toFixed(2)}</p>
+                            </div>
+                            <button onClick={handleOrder} className="bg-orange-600 px-6 py-3 rounded-xl font-bold text-sm shadow-lg shadow-orange-600/30">Checkout</button>
+                        </div>
+                    )}
+                </div>
+            </MobileWrapper>
+        );
+    }
+
+    return (
+        <MobileWrapper title="Canteens" showBack>
+            <div className="px-6 space-y-4 pt-2">
+                {loading ? <div className="text-center py-10">Searching for canteens...</div> : canteens.map(c => (
+                    <button key={c.vendor_id} onClick={() => openMenu(c)} className="w-full bg-white p-5 rounded-[24px] border border-slate-100 shadow-sm flex items-center justify-between group">
+                        <div className="flex gap-4 items-center">
+                            <div className="w-12 h-12 bg-orange-50 rounded-2xl flex items-center justify-center text-orange-600"><Utensils size={20} /></div>
+                            <div className="text-left">
+                                <h4 className="font-bold text-slate-800">{c.vendor_name}</h4>
+                                <p className="text-xs text-slate-400 font-medium tracking-tight">Browse Menu & Order</p>
+                            </div>
+                        </div>
+                        <ArrowRight size={18} className="text-slate-300 group-hover:text-orange-600 transition-all group-hover:translate-x-1" />
+                    </button>
+                ))}
+            </div>
+        </MobileWrapper>
+    );
+};
+
+const LibraryScreen = ({ MobileWrapper, navigate }) => {
+    const [books, setBooks] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const load = async () => {
+            try {
+                const data = await apiRequest('/library/books');
+                setBooks(data || []);
+            } catch (e) {
+                setBooks([
+                    { id: 'b1', title: 'Modern Physics', author: 'Resnick Halliday', category: 'Science', available_copies: 5 },
+                    { id: 'b2', title: 'DSA in Java', author: 'N. Karumanchi', category: 'CS', available_copies: 2 }
+                ]);
+            }
+            setLoading(false);
+        };
+        load();
+    }, []);
+
+    const handleRent = async (b) => {
+        if (!window.confirm(`Rent "${b.title}" for 14 days?`)) return;
+        try {
+            await apiRequest('/library/rent', 'POST', { book_id: b.id });
+            alert('Book rented successfully!');
+            navigate('Dashboard');
+        } catch (e) { alert(e.message); }
+    };
+
+    return (
+        <MobileWrapper title="Library" showBack>
+            <div className="px-6 space-y-4 pt-2 pb-10">
+                {loading ? <div className="text-center py-10">Looking up books...</div> : books.map(b => (
+                    <div key={b.id} className="bg-white p-5 rounded-[24px] border border-slate-100 shadow-sm flex flex-col gap-4">
+                        <div className="flex gap-4 items-start">
+                            <div className="w-12 h-16 bg-blue-50 border border-blue-100 rounded-lg flex items-center justify-center text-blue-600 shrink-0"><BookOpen size={24} /></div>
+                            <div className="flex-1 min-w-0">
+                                <h4 className="font-bold text-slate-800 truncate leading-tight">{b.title}</h4>
+                                <p className="text-xs text-slate-500 mt-1 font-medium italic">by {b.author}</p>
+                                <span className="inline-block mt-3 px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-500 uppercase tracking-wider">{b.category}</span>
+                            </div>
+                        </div>
+                        <div className="flex justify-between items-center pt-4 border-t border-slate-50">
+                            <p className="text-xs text-slate-400 font-medium"><span className="text-slate-800 font-bold">{b.available_copies}</span> copies left</p>
+                            <button onClick={() => handleRent(b)} disabled={b.available_copies === 0}
+                                className="bg-blue-600 text-white px-5 py-2.5 rounded-xl text-xs font-bold hover:bg-blue-700 disabled:opacity-50 transition-all shadow-md shadow-blue-600/20">
+                                Rent Now
+                            </button>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </MobileWrapper>
+    );
+};

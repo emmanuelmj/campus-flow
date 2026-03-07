@@ -20,6 +20,8 @@ class TransactionType(str, enum.Enum):
     FINE = "FINE"
     FEE = "FEE"
     TOP_UP = "TOP_UP"
+    CANTEEN_PURCHASE = "CANTEEN_PURCHASE"
+    LIBRARY_RENTAL = "LIBRARY_RENTAL"
 
 
 class TransactionStatus(str, enum.Enum):
@@ -136,3 +138,77 @@ class AdminDeductRequest(Base):
     vendor = relationship("User", foreign_keys=[vendor_id])
     student = relationship("User", foreign_keys=[student_id])
     resolver = relationship("User", foreign_keys=[resolved_by])
+
+
+# ─── Canteen ───────────────────────────────────────────────────────────────────
+
+class MenuItem(Base):
+    __tablename__ = "menu_items"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    vendor_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
+    name = Column(String, nullable=False)
+    description = Column(String, nullable=True)
+    price = Column(Float, nullable=False)
+    category = Column(String, nullable=True) # e.g. Snacks, Drinks, Mains
+    is_available = Column(Boolean, default=True)
+    image_url = Column(String, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    vendor = relationship("User", foreign_keys=[vendor_id])
+
+
+class CanteenOrder(Base):
+    __tablename__ = "canteen_orders"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    student_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
+    vendor_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
+    total_amount = Column(Float, nullable=False)
+    status = Column(String, default="PENDING") # PENDING, PREPARING, READY, COMPLETED, CANCELLED
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    student = relationship("User", foreign_keys=[student_id])
+    vendor = relationship("User", foreign_keys=[vendor_id])
+    items = relationship("CanteenOrderItem", back_populates="order")
+
+
+class CanteenOrderItem(Base):
+    __tablename__ = "canteen_order_items"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    order_id = Column(UUID(as_uuid=True), ForeignKey("canteen_orders.id"))
+    menu_item_id = Column(UUID(as_uuid=True), ForeignKey("menu_items.id"))
+    quantity = Column(SQLEnum(enum.IntEnum('Quantity', 'ONE TWO THREE FOUR FIVE'), create_type=False), default=1) # Simplified for now or just use Integer
+    # Re-evaluating quantity to just use Integer for simplicity
+    quantity = Column(Float, default=1.0) # Using float/int
+    price_at_order = Column(Float, nullable=False)
+
+    order = relationship("CanteenOrder", back_populates="items")
+    menu_item = relationship("MenuItem")
+
+
+# ─── Library ───────────────────────────────────────────────────────────────────
+
+class Book(Base):
+    __tablename__ = "books"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    title = Column(String, nullable=False)
+    author = Column(String, nullable=False)
+    isbn = Column(String, unique=True, nullable=True)
+    category = Column(String, nullable=True)
+    total_copies = Column(SQLEnum(enum.IntEnum('Copies', 'ZERO ONE TWO THREE FOUR FIVE TEN'), create_type=False), default=1)
+    # Again, better to use Float or Integer
+    total_copies = Column(Float, default=1.0)
+    available_copies = Column(Float, default=1.0)
+    image_url = Column(String, nullable=True)
+
+class BookRental(Base):
+    __tablename__ = "book_rentals"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    book_id = Column(UUID(as_uuid=True), ForeignKey("books.id"))
+    student_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
+    rented_at = Column(DateTime, default=datetime.utcnow)
+    due_date = Column(DateTime, nullable=False)
+    returned_at = Column(DateTime, nullable=True)
+    status = Column(String, default="RENTED") # RENTED, RETURNED, OVERDUE
+
+    book = relationship("Book")
+    student = relationship("User")

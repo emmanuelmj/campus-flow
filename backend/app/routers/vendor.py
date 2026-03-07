@@ -3,8 +3,10 @@ from sqlalchemy.orm import Session
 from sqlalchemy import or_
 from pydantic import BaseModel
 from decimal import Decimal
+from uuid import UUID
 from app import database, models, schemas
 from app.utils.security import get_current_user
+from typing import List
 
 router = APIRouter(prefix="/vendor", tags=["vendor"])
 
@@ -189,3 +191,108 @@ def list_own_deduct_requests(
         })
 
     return results
+
+
+# ─── Canteen Menu Management ──────────────────────────────────────────────────
+
+@router.post("/menu", response_model=schemas.MenuItemResponse)
+def create_menu_item(
+    item: schemas.MenuItemCreate,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(database.get_db),
+):
+    _require_vendor(current_user)
+    db_item = models.MenuItem(**item.model_dump(), vendor_id=current_user["user_id"])
+    db.add(db_item)
+    db.commit()
+    db.refresh(db_item)
+    return db_item
+
+
+@router.get("/menu", response_model=List[schemas.MenuItemResponse])
+def list_menu_items(
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(database.get_db),
+):
+    _require_vendor(current_user)
+    return db.query(models.MenuItem).filter(models.MenuItem.vendor_id == current_user["user_id"]).all()
+
+
+@router.put("/menu/{item_id}", response_model=schemas.MenuItemResponse)
+def update_menu_item(
+    item_id: UUID,
+    item: schemas.MenuItemUpdate,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(database.get_db),
+):
+    _require_vendor(current_user)
+    db_item = db.query(models.MenuItem).filter(
+        models.MenuItem.id == item_id, 
+        models.MenuItem.vendor_id == current_user["user_id"]
+    ).first()
+    if not db_item:
+        raise HTTPException(status_code=404, detail="Menu item not found")
+    
+    update_data = item.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(db_item, key, value)
+    
+    db.commit()
+    db.refresh(db_item)
+    return db_item
+
+
+@router.delete("/menu/{item_id}")
+def delete_menu_item(
+    item_id: UUID,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(database.get_db),
+):
+    _require_vendor(current_user)
+    db_item = db.query(models.MenuItem).filter(
+        models.MenuItem.id == item_id, 
+        models.MenuItem.vendor_id == current_user["user_id"]
+    ).first()
+    if not db_item:
+        raise HTTPException(status_code=404, detail="Menu item not found")
+    
+    db.delete(db_item)
+    db.commit()
+    return {"status": "SUCCESS", "message": "Item deleted"}
+
+
+# ─── Canteen Order Management ─────────────────────────────────────────────────
+
+@router.get("/orders", response_model=List[schemas.CanteenOrderResponse])
+def list_vendor_orders(
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(database.get_db),
+):
+    _require_vendor(current_user)
+    return (
+        db.query(models.CanteenOrder)
+        .filter(models.CanteenOrder.vendor_id == current_user["user_id"])
+        .order_by(models.CanteenOrder.created_at.desc())
+        .all()
+    )
+
+
+@router.patch("/orders/{order_id}/status", response_model=schemas.CanteenOrderResponse)
+def update_order_status(
+    order_id: UUID,
+    status: str, # PENDING, PREPARING, READY, COMPLETED, CANCELLED
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(database.get_db),
+):
+    _require_vendor(current_user)
+    order = db.query(models.CanteenOrder).filter(
+        models.CanteenOrder.id == order_id,
+        models.CanteenOrder.vendor_id == current_user["user_id"]
+    ).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    
+    order.status = status
+    db.commit()
+    db.refresh(order)
+    return order

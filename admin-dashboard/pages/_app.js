@@ -14,6 +14,7 @@ const PATHS = {
   adduser: 'M8 9a3 3 0 100-6 3 3 0 000 6zM8 11a6 6 0 016 6H2a6 6 0 016-6zM16 7a1 1 0 10-2 0v1h-1a1 1 0 100 2h1v1a1 1 0 102 0v-1h1a1 1 0 100-2h-1V7z',
   analytics: 'M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zm6-4a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zm6-3a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z',
   subs: 'M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4zM18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z',
+  library: 'M3 5a2 2 0 012-2h10a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V5zm11 1H6v8l4-2 4 2V6z',
 };
 
 const NAV = [
@@ -21,6 +22,7 @@ const NAV = [
   { href: '/users', label: 'Users', icon: PATHS.users },
   { href: '/vendors', label: 'Vendors', icon: PATHS.vendors },
   { href: '/fines', label: 'Fines', icon: PATHS.fines },
+  { href: '/library', label: 'Library Management', icon: PATHS.library },
   { href: '/add-user', label: 'Add User', icon: PATHS.adduser },
   { href: '/top-up', label: 'Top Up Wallet', icon: PATHS.topup },
   { href: '/deduct', label: 'Deduct Wallet', icon: PATHS.deduct },

@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: campusflow-api
+    env: python
+    buildCommand: "cd backend && pip install -r requirements.txt"
+    startCommand: "cd backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+    envVars:
+      - key: DATABASE_URL
+        value: postgresql://postgres:postgres@0.tcp.ngrok.io:16520/campusflow
+        sync: false # Set this in the Render dashboard to point to your new hosted PostgreSQL database

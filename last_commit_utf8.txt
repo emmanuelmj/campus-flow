@@ -1,0 +1,17 @@
+﻿commit 75141f586551655d2dfc686e9df5ef36231ec496
+Author: Tipirneni Sai Aditya Datta <saiadityatipirneni@gmail.com>
+Date:   Fri Mar 6 12:52:43 2026 +0530
+
+    feat: implement QR payment scanning and My QR generation inside Student App
+commit 75141f586551655d2dfc686e9df5ef36231ec496
+Author: Tipirneni Sai Aditya Datta <saiadityatipirneni@gmail.com>
+Date:   Fri Mar 6 12:52:43 2026 +0530
+
+    feat: implement QR payment scanning and My QR generation inside Student App
+
+ backend/app/routers/auth.py     |   3 +-
+ backend/app/schemas/__init__.py |   1 +
+ mobile-web/package-lock.json    |  19 ++++++-
+ mobile-web/package.json         |   2 +
+ mobile-web/src/App.jsx          | 121 ++++++++++++++++++++++++++++++++++++++--
+ 5 files changed, 138 insertions(+), 8 deletions(-)
